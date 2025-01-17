@@ -1,6 +1,6 @@
 <?php
 
-namespace Vormkracht10\Uploadcare;
+namespace Vormkracht10\UploadcareField;
 
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -12,7 +12,7 @@ use Vormkracht10\MediaPicker\Models\Media;
 use Vormkracht10\Uploadcare\Enums\Style;
 use Vormkracht10\Uploadcare\Forms\Components\Uploadcare as Input;
 
-class Uploadcare extends FieldBase implements FieldContract
+class UploadcareField extends FieldBase implements FieldContract
 {
     public static function getDefaultConfig(): array
     {

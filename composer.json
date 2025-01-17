@@ -36,13 +36,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Vormkracht10\\Uploadcare\\": "src/",
-            "Vormkracht10\\Uploadcare\\Database\\Factories\\": "database/factories/"
+            "Vormkracht10\\UploadcareField\\": "src/",
+            "Vormkracht10\\UploadcareField\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Vormkracht10\\Uploadcare\\Tests\\": "tests/",
+            "Vormkracht10\\UploadcareField\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -74,10 +74,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Vormkracht10\\Uploadcare\\UploadcareServiceProvider"
+                "Vormkracht10\\UploadcareField\\UploadcareFieldServiceProvider"
             ],
             "aliases": {
-                "Uploadcare": "Vormkracht10\\Uploadcare\\Facades\\Uploadcare"
+                "UploadcareField": "Vormkracht10\\UploadcareField\\Facades\\UploadcareField"
             }
         }
     },
