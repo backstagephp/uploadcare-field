@@ -2,14 +2,14 @@
 
 namespace Vormkracht10\UploadcareField;
 
-use Filament\Forms;
 use Filament\Facades\Filament;
+use Filament\Forms;
 use Illuminate\Database\Eloquent\Model;
-use Vormkracht10\Backstage\Models\Field;
-use Vormkracht10\Uploadcare\Enums\Style;
-use Vormkracht10\MediaPicker\Models\Media;
-use Vormkracht10\Backstage\Fields\FieldBase;
 use Vormkracht10\Backstage\Contracts\FieldContract;
+use Vormkracht10\Backstage\Fields\FieldBase;
+use Vormkracht10\Backstage\Models\Field;
+use Vormkracht10\MediaPicker\Models\Media;
+use Vormkracht10\Uploadcare\Enums\Style;
 use Vormkracht10\Uploadcare\Forms\Components\Uploadcare as Input;
 
 class UploadcareField extends FieldBase implements FieldContract
@@ -100,7 +100,7 @@ class UploadcareField extends FieldBase implements FieldContract
             return $data;
         }
 
-        if (!isset($data['setting'][$field->slug])) {
+        if (! isset($data['setting'][$field->slug])) {
             return $data;
         }
 
@@ -110,7 +110,7 @@ class UploadcareField extends FieldBase implements FieldContract
             $values = json_decode($values, true);
         }
 
-        if (!is_array($values)) {
+        if (! is_array($values)) {
             return $data;
         }
 
@@ -118,11 +118,11 @@ class UploadcareField extends FieldBase implements FieldContract
 
         foreach ($values as $file) {
             $info = $file['fileInfo'];
-            $detailedInfo = !empty($info['imageInfo'])
+            $detailedInfo = ! empty($info['imageInfo'])
                 ? $info['imageInfo']
-                : (!empty($info['videoInfo'])
+                : (! empty($info['videoInfo'])
                     ? $info['videoInfo']
-                    : (!empty($info['contentInfo'])
+                    : (! empty($info['contentInfo'])
                         ? $info['contentInfo']
                         : []));
 
