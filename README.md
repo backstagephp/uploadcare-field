@@ -30,7 +30,7 @@ Then you need to add the Uploadcare field to your `backstage.php` config file:
 ```php
 return [
     'fields' => [
-        \Vormkracht10\UploadcareField\UploadcareField::class,
+        \Vormkracht10\UploadcareField\Uploadcare::class,
     ],
 ];
 ```

@@ -12,7 +12,7 @@ use Vormkracht10\MediaPicker\Models\Media;
 use Vormkracht10\Uploadcare\Enums\Style;
 use Vormkracht10\Uploadcare\Forms\Components\Uploadcare as Input;
 
-class UploadcareField extends FieldBase implements FieldContract
+class Uploadcare extends FieldBase implements FieldContract
 {
     public static function getDefaultConfig(): array
     {
