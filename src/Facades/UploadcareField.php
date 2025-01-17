@@ -1,16 +1,16 @@
 <?php
 
-namespace Vormkracht10\UploadcareField\Facades;
+namespace Vormkracht10\Uploadcare\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Vormkracht10\UploadcareField\UploadcareField
+ * @see \Vormkracht10\Uploadcare\Uploadcare
  */
-class UploadcareField extends Facade
+class Uploadcare extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return \Vormkracht10\UploadcareField\UploadcareField::class;
+        return \Vormkracht10\Uploadcare\Uploadcare::class;
     }
 }

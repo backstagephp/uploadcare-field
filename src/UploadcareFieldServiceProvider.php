@@ -1,11 +1,11 @@
 <?php
 
-namespace Vormkracht10\UploadcareField;
+namespace Vormkracht10\Uploadcare;
 
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class UploadcareFieldServiceProvider extends PackageServiceProvider
+class UploadcareServiceProvider extends PackageServiceProvider
 {
     public function configurePackage(Package $package): void
     {
