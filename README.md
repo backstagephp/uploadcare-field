@@ -5,7 +5,7 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/vormkracht10/backstage-uploadcare-field/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/vormkracht10/backstage-uploadcare-field/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/vormkracht10/backstage-uploadcare-field.svg?style=flat-square)](https://packagist.org/packages/vormkracht10/backstage-uploadcare-field)
 
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
+This package adds an Uploadcare field to the Backstage CMS.
 
 ## Installation
 
@@ -15,37 +15,30 @@ You can install the package via composer:
 composer require vormkracht10/backstage-uploadcare-field
 ```
 
-You can publish and run the migrations with:
-
-```bash
-php artisan vendor:publish --tag="backstage-uploadcare-field-migrations"
-php artisan migrate
-```
-
-You can publish the config file with:
-
-```bash
-php artisan vendor:publish --tag="backstage-uploadcare-field-config"
-```
-
-This is the contents of the published config file:
+Then you need to add the Uploadcare public key to your services.php config file:
 
 ```php
 return [
+    'uploadcare' => [
+        'public_key' => env('UPLOADCARE_PUBLIC_KEY')
+    ]
 ];
 ```
 
-Optionally, you can publish the views using
+Then you need to add the Uploadcare field to your `backstage.php` config file:
 
-```bash
-php artisan vendor:publish --tag="backstage-uploadcare-field-views"
+```php
+return [
+    'fields' => [
+        \Vormkracht10\UploadcareField\UploadcareField::class,
+    ],
+];
 ```
 
 ## Usage
 
 ```php
-$uploadcareField = new Vormkracht10\UploadcareField();
-echo $uploadcareField->echoPhrase('Hello, Vormkracht10!');
+//
 ```
 
 ## Testing
@@ -68,8 +61,8 @@ Please review [our security policy](../../security/policy) on how to report secu
 
 ## Credits
 
-- [Baspa](https://github.com/vormkracht10)
-- [All Contributors](../../contributors)
+-   [Baspa](https://github.com/vormkracht10)
+-   [All Contributors](../../contributors)
 
 ## License
 

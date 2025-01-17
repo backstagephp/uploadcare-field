@@ -86,7 +86,7 @@
     "repositories": [
         {
             "type": "git",
-            "url": "https://github.com/vormkracht10/filament-uploadcare-field.git"
+            "url": "git@github.com:vormkracht10/filament-uploadcare-field.git"
         },
         {
             "type": "git",
