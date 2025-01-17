@@ -37,9 +37,7 @@ return [
 
 ## Usage
 
-```php
-//
-```
+After adding the Uploadcare field to your `backstage.php` config file, the field will automatically be available in the Backstage CMS.
 
 ## Testing
 
