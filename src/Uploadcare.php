@@ -6,7 +6,6 @@ use Filament\Facades\Filament;
 use Filament\Forms;
 use Illuminate\Database\Eloquent\Model;
 use Vormkracht10\Fields\Contracts\FieldContract;
-use Vormkracht10\Fields\Fields\Base;
 use Vormkracht10\Fields\Models\Field;
 use Vormkracht10\MediaPicker\Models\Media;
 use Vormkracht10\Uploadcare\Enums\Style;
