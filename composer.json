@@ -20,6 +20,7 @@
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/contracts": "^10.0||^11.0",
         "vormkracht10/filament-uploadcare-field": "dev-main",
+        "vormkracht10/filament-fields": "dev-main",
         "vormkracht10/backstage": "dev-main"
     },
     "require-dev": {
@@ -91,6 +92,10 @@
         {
             "type": "git",
             "url": "https://github.com/vormkracht10/backstage.git"
+        },
+        {
+            "type": "git",
+            "url": "https://github.com/vormkracht10/filament-fields.git"
         }
     ]
 }
