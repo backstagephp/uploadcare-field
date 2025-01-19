@@ -5,7 +5,25 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/vormkracht10/backstage-uploadcare-field/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/vormkracht10/backstage-uploadcare-field/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/vormkracht10/backstage-uploadcare-field.svg?style=flat-square)](https://packagist.org/packages/vormkracht10/backstage-uploadcare-field)
 
-This package adds an Uploadcare field to the Backstage CMS.
+## Nice to meet you, we're [Vormkracht10](https://vormkracht10.nl)
+
+Hi! We are a web development agency from Nijmegen in the Netherlands and we use Laravel for everything: advanced websites with a lot of bells and whitles and large web applications.
+
+## About this package
+
+This package adds an Uploadcare field to the Backstage CMS. Uploadcare is a powerful file handling platform that provides file uploads, storage, transformations and delivery. With this package, you can easily integrate Uploadcare's functionality into your Backstage CMS forms.
+
+The field supports:
+
+-   Single and multiple file uploads
+-   Image previews
+-   File size limits
+-   Allowed file types
+-   Direct CDN delivery
+-   Image transformations
+-   Secure file storage
+
+Once installed, you can use the Uploadcare field in your Backstage forms just like any other field type, while leveraging Uploadcare's robust file handling capabilities.
 
 ## Installation
 
