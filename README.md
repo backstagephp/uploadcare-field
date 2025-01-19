@@ -25,6 +25,10 @@ The field supports:
 
 Once installed, you can use the Uploadcare field in your Backstage forms just like any other field type, while leveraging Uploadcare's robust file handling capabilities.
 
+### Other custom fields
+
+For a list of other custom fields, please see the [Backstage CMS documentation](https://github.com/vormkracht10/backstage/blob/main/docs/04-plugins/01-introduction.md).
+
 ## Installation
 
 You can install the package via composer:
