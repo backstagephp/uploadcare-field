@@ -89,7 +89,7 @@ class Uploadcare extends Base implements FieldContract
                 return $media->metadata['cdnUrl'];
             })->toArray();
 
-        $data['setting'][$field->ulid] = json_encode($media);
+        $data[$record->valueColumn][$field->ulid] = json_encode($media);
 
         return $data;
     }
@@ -100,11 +100,11 @@ class Uploadcare extends Base implements FieldContract
             return $data;
         }
 
-        if (! isset($data['setting'][$field->ulid])) {
+        if (! isset($data[$record->valueColumn][$field->ulid])) {
             return $data;
         }
 
-        $values = $data['setting'][$field->ulid];
+        $values = $data[$record->valueColumn][$field->ulid];
 
         if (is_string($values)) {
             $values = json_decode($values, true);
@@ -144,7 +144,7 @@ class Uploadcare extends Base implements FieldContract
             ]);
         }
 
-        $data['setting'][$field->ulid] = collect($media)->map(function ($media) {
+        $data[$record->valueColumn][$field->ulid] = collect($media)->map(function ($media) {
             return $media->ulid;
         })->toArray();
 
