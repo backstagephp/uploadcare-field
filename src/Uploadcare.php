@@ -75,11 +75,11 @@ class Uploadcare extends Base implements FieldContract
 
     public static function mutateFormDataCallback(Model $record, Field $field, array $data): array
     {
-        if (! isset($record->values[$field->slug])) {
+        if (! isset($record->values[$field->ulid])) {
             return $data;
         }
 
-        $media = Media::whereIn('ulid', $record->values[$field->slug])
+        $media = Media::whereIn('ulid', $record->values[$field->ulid])
             ->get()
             ->map(function ($media) {
                 if (! isset($media->metadata['cdnUrl'])) {
@@ -89,7 +89,7 @@ class Uploadcare extends Base implements FieldContract
                 return $media->metadata['cdnUrl'];
             })->toArray();
 
-        $data['setting'][$field->slug] = json_encode($media);
+        $data['setting'][$field->ulid] = json_encode($media);
 
         return $data;
     }
@@ -100,11 +100,11 @@ class Uploadcare extends Base implements FieldContract
             return $data;
         }
 
-        if (! isset($data['setting'][$field->slug])) {
+        if (! isset($data['setting'][$field->ulid])) {
             return $data;
         }
 
-        $values = $data['setting'][$field->slug];
+        $values = $data['setting'][$field->ulid];
 
         if (is_string($values)) {
             $values = json_decode($values, true);
@@ -144,7 +144,7 @@ class Uploadcare extends Base implements FieldContract
             ]);
         }
 
-        $data['setting'][$field->slug] = collect($media)->map(function ($media) {
+        $data['setting'][$field->ulid] = collect($media)->map(function ($media) {
             return $media->ulid;
         })->toArray();
 
