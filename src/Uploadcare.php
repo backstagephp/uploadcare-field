@@ -105,6 +105,7 @@ class Uploadcare extends Base implements FieldContract
         dd($data, $record->valueColumn, $field->ulid);
         if (! isset($data[$record->valueColumn][$field->ulid])) {
             dd('test1');
+
             return $data;
         }
 
