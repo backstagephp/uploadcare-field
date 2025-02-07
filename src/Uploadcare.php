@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Vormkracht10\Fields\Contracts\FieldContract;
 use Vormkracht10\Fields\Fields\Base;
 use Vormkracht10\Fields\Models\Field;
-use Vormkracht10\MediaPicker\Models\Media;
+use Backstage\Media\Models\Media;
 use Vormkracht10\Uploadcare\Enums\Style;
 use Vormkracht10\Uploadcare\Forms\Components\Uploadcare as Input;
 
