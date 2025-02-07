@@ -83,14 +83,14 @@
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
-    "repositories": [
-        {
+    "repositories": {
+        "filament-uploadcare-field": {
             "type": "git",
             "url": "https://github.com/vormkracht10/filament-uploadcare-field.git"
         },
-        {
+        "fields": {
             "type": "git",
             "url": "https://github.com/backstage/fields.git"
         }
-    ]
+    }
 }
