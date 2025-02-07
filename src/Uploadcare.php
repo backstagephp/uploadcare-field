@@ -2,13 +2,13 @@
 
 namespace Backstage\UploadcareField;
 
+use Backstage\Media\Models\Media;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Illuminate\Database\Eloquent\Model;
 use Vormkracht10\Fields\Contracts\FieldContract;
 use Vormkracht10\Fields\Fields\Base;
 use Vormkracht10\Fields\Models\Field;
-use Backstage\Media\Models\Media;
 use Vormkracht10\Uploadcare\Enums\Style;
 use Vormkracht10\Uploadcare\Forms\Components\Uploadcare as Input;
 
