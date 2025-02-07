@@ -90,7 +90,7 @@
         },
         "fields": {
             "type": "git",
-            "url": "https://github.com/backstage/fields.git"
+            "url": "https://github.com/backstagephp/fields.git"
         }
     }
 }
