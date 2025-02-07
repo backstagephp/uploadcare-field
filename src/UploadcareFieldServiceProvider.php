@@ -1,6 +1,6 @@
 <?php
 
-namespace Vormkracht10\UploadcareField;
+namespace Backstage\UploadcareField;
 
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;

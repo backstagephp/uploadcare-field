@@ -1,6 +1,6 @@
 <?php
 
-namespace Vormkracht10\UploadcareField;
+namespace Backstage\UploadcareField;
 
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -97,10 +97,14 @@ class Uploadcare extends Base implements FieldContract
     public static function mutateBeforeSaveCallback(Model $record, Field $field, array $data): array
     {
         if ($field->field_type !== 'uploadcare') {
+            dd('test', $field);
+
             return $data;
         }
 
+        dd($data, $record->valueColumn, $field->ulid);
         if (! isset($data[$record->valueColumn][$field->ulid])) {
+            dd('test1');
             return $data;
         }
 
@@ -111,6 +115,8 @@ class Uploadcare extends Base implements FieldContract
         }
 
         if (! is_array($values)) {
+            dd('test2');
+
             return $data;
         }
 
@@ -143,6 +149,8 @@ class Uploadcare extends Base implements FieldContract
                 'metadata' => $info,
             ]);
         }
+
+        dd($media);
 
         $data[$record->valueColumn][$field->ulid] = collect($media)->map(function ($media) {
             return $media->ulid;

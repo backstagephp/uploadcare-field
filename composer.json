@@ -1,12 +1,12 @@
 {
-    "name": "vormkracht10/backstage-uploadcare-field",
+    "name": "backstage/uploadcare-field",
     "description": "Uploadcare Field component for the Backstage CMS.",
     "keywords": [
         "Vormkracht10",
         "laravel",
         "backstage-uploadcare-field"
     ],
-    "homepage": "https://github.com/vormkracht10/backstage-uploadcare-field",
+    "homepage": "https://github.com/backstagephp/uploadcare-field",
     "license": "MIT",
     "authors": [
         {
@@ -20,7 +20,7 @@
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/contracts": "^10.0||^11.0",
         "vormkracht10/filament-uploadcare-field": "dev-main",
-        "vormkracht10/filament-fields": "dev-main"
+        "backstage/fields": "dev-main"
     },
     "require-dev": {
         "laravel/pint": "^1.14",
@@ -36,13 +36,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Vormkracht10\\UploadcareField\\": "src/",
-            "Vormkracht10\\UploadcareField\\Database\\Factories\\": "database/factories/"
+            "Backstage\\UploadcareField\\": "src/",
+            "Backstage\\UploadcareField\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Vormkracht10\\UploadcareField\\Tests\\": "tests/",
+            "Backstage\\UploadcareField\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -74,10 +74,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Vormkracht10\\UploadcareField\\UploadcareFieldServiceProvider"
+                "Backstage\\UploadcareField\\UploadcareFieldServiceProvider"
             ],
             "aliases": {
-                "UploadcareField": "Vormkracht10\\UploadcareField\\Facades\\UploadcareField"
+                "UploadcareField": "Backstage\\UploadcareField\\Facades\\UploadcareField"
             }
         }
     },
@@ -90,7 +90,7 @@
         },
         {
             "type": "git",
-            "url": "https://github.com/vormkracht10/filament-fields.git"
+            "url": "https://github.com/backstage/fields.git"
         }
     ]
 }

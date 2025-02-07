@@ -1,10 +1,10 @@
 <?php
 
-namespace Vormkracht10\UploadcareField\Tests;
+namespace Backstage\UploadcareField\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Vormkracht10\UploadcareField\UploadcareFieldServiceProvider;
+use Backstage\UploadcareField\UploadcareFieldServiceProvider;
 
 class TestCase extends Orchestra
 {
@@ -13,7 +13,7 @@ class TestCase extends Orchestra
         parent::setUp();
 
         Factory::guessFactoryNamesUsing(
-            fn (string $modelName) => 'Vormkracht10\\UploadcareField\\Database\\Factories\\'.class_basename($modelName).'Factory'
+            fn(string $modelName) => 'Backstage\\UploadcareField\\Database\\Factories\\' . class_basename($modelName) . 'Factory'
         );
     }
 
