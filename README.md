@@ -47,11 +47,14 @@ return [
 ];
 ```
 
-Then you need to add the Uploadcare field to your `backstage.php` config file:
+Then you need to add the Uploadcare field to your `backstage/fields.php` config file:
 
 ```php
 return [
-    'fields' => [
+
+    // ...
+
+    'custom_fields' => [
         Backstage\UploadcareField\Uploadcare::class,
     ],
 ];
@@ -59,7 +62,7 @@ return [
 
 ## Usage
 
-After adding the Uploadcare field to your `backstage.php` config file, the field will automatically be available in the Backstage CMS.
+After adding the Uploadcare field to your `backstage/fields.php` config file, the field will automatically be available in the Backstage CMS.
 
 ## Testing
 
