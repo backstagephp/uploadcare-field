@@ -112,6 +112,7 @@ class Uploadcare extends Base implements FieldContract
                     }
                 }
             }
+
             return null;
         };
 
