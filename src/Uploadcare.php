@@ -100,11 +100,26 @@ class Uploadcare extends Base implements FieldContract
             return $data;
         }
 
-        if (! isset($data[$record->valueColumn][$field->ulid])) {
+        $findInNested = function ($array, $key) use (&$findInNested) {
+            foreach ($array as $k => $value) {
+                if ($k === $key) {
+                    return $value;
+                }
+                if (is_array($value)) {
+                    $result = $findInNested($value, $key);
+                    if ($result !== null) {
+                        return $result;
+                    }
+                }
+            }
+            return null;
+        };
+
+        $values = $findInNested($data[$record->valueColumn], $field->ulid);
+
+        if ($values === null) {
             return $data;
         }
-
-        $values = $data[$record->valueColumn][$field->ulid];
 
         if (is_string($values)) {
             $values = json_decode($values, true);
