@@ -9,8 +9,8 @@ use Backstage\Media\Models\Media;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Illuminate\Database\Eloquent\Model;
-use Vormkracht10\Uploadcare\Enums\Style;
-use Vormkracht10\Uploadcare\Forms\Components\Uploadcare as Input;
+use Backstage\Uploadcare\Enums\Style;
+use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
 
 class Uploadcare extends Base implements FieldContract
 {
