@@ -133,7 +133,12 @@ class Uploadcare extends Base implements FieldContract
         $media = [];
 
         foreach ($values as $file) {
+            if (! is_array($file) && Media::where('checksum', md5_file($file))->exists()) {
+                continue;
+            }
+
             $info = $file['fileInfo'];
+
             $detailedInfo = ! empty($info['imageInfo'])
                 ? $info['imageInfo']
                 : (! empty($info['videoInfo'])

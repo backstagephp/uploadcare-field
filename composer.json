@@ -19,7 +19,7 @@
         "php": "^8.2",
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/contracts": "^10.0||^11.0",
-        "vormkracht10/filament-uploadcare-field": "dev-main",
+        "backstage/filament-uploadcare-field": "0.2.0",
         "backstage/fields": "dev-main"
     },
     "require-dev": {
@@ -86,7 +86,7 @@
     "repositories": {
         "filament-uploadcare-field": {
             "type": "git",
-            "url": "https://github.com/vormkracht10/filament-uploadcare-field.git"
+            "url": "https://github.com/backstagephp/filament-uploadcare-field.git"
         },
         "fields": {
             "type": "git",
