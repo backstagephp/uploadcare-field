@@ -6,11 +6,11 @@ use Backstage\Fields\Contracts\FieldContract;
 use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
 use Backstage\Media\Models\Media;
+use Backstage\Uploadcare\Enums\Style;
+use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Illuminate\Database\Eloquent\Model;
-use Backstage\Uploadcare\Enums\Style;
-use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
 
 class Uploadcare extends Base implements FieldContract
 {
