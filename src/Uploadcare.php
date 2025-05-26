@@ -26,7 +26,11 @@ class Uploadcare extends Base implements FieldContract
 
     public static function make(string $name, Field $field): Input
     {
-        $input = self::applyDefaultSettings(Input::make($name)->withMetadata(), $field);
+        $input = self::applyDefaultSettings(
+            input: Input::make($name)->withMetadata()
+                ->removeCopyright(),
+            field: $field
+        );
 
         $input = $input->label($field->name ?? self::getDefaultConfig()['label'] ?? null)
             ->uploaderStyle(Style::tryFrom($field->config['uploaderStyle'] ?? null) ?? Style::tryFrom(self::getDefaultConfig()['uploaderStyle']))
