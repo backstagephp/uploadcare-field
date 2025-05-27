@@ -158,7 +158,7 @@ class Uploadcare extends Base implements FieldContract
                 'checksum' => md5_file($info['cdnUrl']),
             ], [
                 'filename' => $info['uuid'],
-                'uploaded_by' => auth()->user()->id,
+                'uploaded_by' => auth()->user()?->id,
                 'extension' => $detailedInfo['format'] ?? null,
                 'mime_type' => $info['mimeType'],
                 'size' => $info['size'],
