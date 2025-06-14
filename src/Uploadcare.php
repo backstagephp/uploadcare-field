@@ -152,13 +152,13 @@ class Uploadcare extends Base implements FieldContract
                         : []));
 
             $media[] = Media::updateOrCreate([
-                'site_ulid' => Filament::getTenant()->ulid,
+                'site_ulid' => Filament::getTenant()?->ulid,
                 'disk' => 'uploadcare',
                 'original_filename' => $info['name'],
                 'checksum' => md5_file($info['cdnUrl']),
             ], [
                 'filename' => $info['uuid'],
-                'uploaded_by' => auth()->user()->id,
+                'uploaded_by' => auth()->user()?->id,
                 'extension' => $detailedInfo['format'] ?? null,
                 'mime_type' => $info['mimeType'],
                 'size' => $info['size'],
