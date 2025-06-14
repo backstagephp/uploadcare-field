@@ -19,7 +19,7 @@
         "php": "^8.2",
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/contracts": "^10.0||^11.0",
-        "backstage/filament-uploadcare-field": "0.2.14",
+        "backstage/filament-uploadcare-field": "^0.2.17",
         "backstage/fields": "dev-main"
     },
     "require-dev": {
