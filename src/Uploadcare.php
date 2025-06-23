@@ -78,7 +78,7 @@ class Uploadcare extends Base implements FieldContract
 
     public static function mutateFormDataCallback(Model $record, Field $field, array $data): array
     {
-        if (! isset($record->values[$field->ulid])) {
+        if (! property_exists($record, 'valueColumn') || ! isset($record->values[$field->ulid])) {
             return $data;
         }
 
@@ -105,11 +105,15 @@ class Uploadcare extends Base implements FieldContract
 
     public static function mutateBeforeSaveCallback(Model $record, Field $field, array $data): array
     {
-        if ($field->field_type !== 'uploadcare') {
+        if (! property_exists($field, 'field_type') || $field->field_type !== 'uploadcare') {
             return $data;
         }
 
-        $values = self::findFieldValues($data[$record->valueColumn], $field->ulid);
+        if (! property_exists($record, 'valueColumn')) {
+            return $data;
+        }
+
+        $values = self::findFieldValues($data[$record->valueColumn], (string) $field->ulid);
 
         if ($values === null) {
             return $data;
@@ -145,7 +149,21 @@ class Uploadcare extends Base implements FieldContract
 
     private static function isMediaUlidArray(array $values): bool
     {
-        return isset($values[0]) && is_string($values[0]) && ! isset($values[0]['uuid']);
+        if (! isset($values[0])) {
+            return false;
+        }
+        
+        $firstValue = $values[0];
+        
+        if (is_string($firstValue)) {
+            return true;
+        }
+        
+        if (is_array($firstValue) && isset($firstValue['uuid'])) {
+            return false;
+        }
+        
+        return false;
     }
 
     private static function filterValidUrls(array $urls): array
@@ -295,8 +313,14 @@ class Uploadcare extends Base implements FieldContract
         $info = $file['fileInfo'] ?? $file;
         $detailedInfo = self::extractDetailedInfo($info);
 
+        $tenantUlid = null;
+        if (class_exists(Filament::class) && method_exists(Filament::class, 'getTenant')) {
+            $tenant = Filament::getTenant();
+            $tenantUlid = $tenant?->ulid ?? null;
+        }
+
         return $mediaModel::updateOrCreate([
-            'site_ulid' => Filament::getTenant()?->ulid,
+            'site_ulid' => $tenantUlid,
             'disk' => 'uploadcare',
             'original_filename' => $info['name'],
             'checksum' => md5_file($info['cdnUrl']),
