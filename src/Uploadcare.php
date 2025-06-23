@@ -78,25 +78,26 @@ class Uploadcare extends Base implements FieldContract
 
     public static function mutateFormDataCallback(Model $record, Field $field, array $data): array
     {
-        if (!isset($record->values[$field->ulid])) {
+        if (! isset($record->values[$field->ulid])) {
             return $data;
         }
 
         $values = $record->values[$field->ulid];
-        
+
         if (empty($values)) {
             $data[$record->valueColumn][$field->ulid] = [];
+
             return $data;
         }
-        
+
         $values = self::parseValues($values);
-        
+
         if (self::isMediaUlidArray($values)) {
             $mediaUrls = self::extractMediaUrls($values);
         } else {
             $mediaUrls = self::extractCdnUrlsFromFileData($values);
         }
-        
+
         $data[$record->valueColumn][$field->ulid] = self::filterValidUrls($mediaUrls);
 
         return $data;
@@ -115,8 +116,8 @@ class Uploadcare extends Base implements FieldContract
         }
 
         $values = self::normalizeValues($values);
-        
-        if (!is_array($values)) {
+
+        if (! is_array($values)) {
             return $data;
         }
 
@@ -135,20 +136,21 @@ class Uploadcare extends Base implements FieldContract
     {
         if (is_string($values)) {
             $decoded = json_decode($values, true);
+
             return json_last_error() === JSON_ERROR_NONE ? $decoded : [];
         }
-        
+
         return $values;
     }
 
     private static function isMediaUlidArray(array $values): bool
     {
-        return isset($values[0]) && is_string($values[0]) && !isset($values[0]['uuid']);
+        return isset($values[0]) && is_string($values[0]) && ! isset($values[0]['uuid']);
     }
 
     private static function filterValidUrls(array $urls): array
     {
-        return array_filter($urls, function($url) {
+        return array_filter($urls, function ($url) {
             return filter_var($url, FILTER_VALIDATE_URL) !== false;
         });
     }
@@ -156,16 +158,16 @@ class Uploadcare extends Base implements FieldContract
     private static function extractMediaUrls(array $mediaUlids): array
     {
         $mediaModel = self::getMediaModel();
-        
+
         return $mediaModel::whereIn('ulid', $mediaUlids)
             ->get()
             ->map(function ($media) {
-                if (!isset($media->metadata['cdnUrl'])) {
+                if (! isset($media->metadata['cdnUrl'])) {
                     return null;
                 }
 
                 $cdnUrl = $media->metadata['cdnUrl'];
-                
+
                 return filter_var($cdnUrl, FILTER_VALIDATE_URL) ? $cdnUrl : null;
             })
             ->filter()
@@ -208,15 +210,15 @@ class Uploadcare extends Base implements FieldContract
 
         foreach ($files as $file) {
             $normalizedFiles = self::normalizeFileData($file);
-            
+
             if (self::isArrayOfArrays($normalizedFiles)) {
                 foreach ($normalizedFiles as $singleFile) {
-                    if (!self::shouldSkipFile($singleFile)) {
+                    if (! self::shouldSkipFile($singleFile)) {
                         $media[] = self::createOrUpdateMediaRecord($singleFile);
                     }
                 }
             } else {
-                if (!self::shouldSkipFile($normalizedFiles)) {
+                if (! self::shouldSkipFile($normalizedFiles)) {
                     $media[] = self::createOrUpdateMediaRecord($normalizedFiles);
                 }
             }
@@ -251,15 +253,17 @@ class Uploadcare extends Base implements FieldContract
                     return true;
                 }
             }
+
             return false;
         }
-        
+
         if (is_string($file)) {
             return self::mediaExists($file);
         }
-        
+
         if (is_array($file)) {
             $cdnUrl = self::extractCdnUrl($file);
+
             return $cdnUrl ? self::mediaExists($cdnUrl) : false;
         }
 
@@ -269,23 +273,25 @@ class Uploadcare extends Base implements FieldContract
     private static function mediaExists(string $file): bool
     {
         $mediaModel = self::getMediaModel();
+
         return $mediaModel::where('checksum', md5_file($file))->exists();
     }
 
     private static function extractCdnUrl(array $file): ?string
     {
         $url = $file['cdnUrl'] ?? $file['fileInfo']['cdnUrl'] ?? null;
+
         return $url && filter_var($url, FILTER_VALIDATE_URL) ? $url : null;
     }
 
     private static function createOrUpdateMediaRecord(array $file): Model
     {
         $mediaModel = self::getMediaModel();
-        
+
         if (self::isArrayOfArrays($file)) {
             $file = $file[0];
         }
-        
+
         $info = $file['fileInfo'] ?? $file;
         $detailedInfo = self::extractDetailedInfo($info);
 
@@ -315,22 +321,22 @@ class Uploadcare extends Base implements FieldContract
     private static function extractCdnUrlsFromFileData(array $files): array
     {
         $cdnUrls = [];
-        
-        if (!is_array($files)) {
+
+        if (! is_array($files)) {
             return $cdnUrls;
         }
-        
+
         foreach ($files as $file) {
-            if (!is_array($file)) {
+            if (! is_array($file)) {
                 continue;
             }
-            
+
             $cdnUrl = self::extractCdnUrl($file);
             if ($cdnUrl) {
                 $cdnUrls[] = $cdnUrl;
             }
         }
-        
+
         return $cdnUrls;
     }
 }
