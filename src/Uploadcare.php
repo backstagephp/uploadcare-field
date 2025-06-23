@@ -152,17 +152,17 @@ class Uploadcare extends Base implements FieldContract
         if (! isset($values[0])) {
             return false;
         }
-        
+
         $firstValue = $values[0];
-        
+
         if (is_string($firstValue)) {
             return true;
         }
-        
+
         if (is_array($firstValue) && isset($firstValue['uuid'])) {
             return false;
         }
-        
+
         return false;
     }
 
