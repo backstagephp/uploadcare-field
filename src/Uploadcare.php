@@ -5,12 +5,12 @@ namespace Backstage\UploadcareField;
 use Backstage\Fields\Contracts\FieldContract;
 use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
-use Backstage\Media\Models\Media;
 use Backstage\Uploadcare\Enums\Style;
 use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Uploadcare extends Base implements FieldContract
 {
@@ -27,8 +27,7 @@ class Uploadcare extends Base implements FieldContract
     public static function make(string $name, Field $field): Input
     {
         $input = self::applyDefaultSettings(
-            input: Input::make($name)->withMetadata()
-                ->removeCopyright(),
+            input: Input::make($name)->withMetadata()->removeCopyright(),
             field: $field
         );
 
@@ -79,21 +78,26 @@ class Uploadcare extends Base implements FieldContract
 
     public static function mutateFormDataCallback(Model $record, Field $field, array $data): array
     {
-        if (! isset($record->values[$field->ulid])) {
+        if (!isset($record->values[$field->ulid])) {
             return $data;
         }
 
-        $media = Media::whereIn('ulid', $record->values[$field->ulid])
-            ->get()
-            ->map(function ($media) {
-                if (! isset($media->metadata['cdnUrl'])) {
-                    throw new \Exception('Uploadcare file does not have a CDN URL');
-                }
-
-                return $media->metadata['cdnUrl'];
-            })->toArray();
-
-        $data[$record->valueColumn][$field->ulid] = json_encode($media);
+        $values = $record->values[$field->ulid];
+        
+        if (empty($values)) {
+            $data[$record->valueColumn][$field->ulid] = [];
+            return $data;
+        }
+        
+        $values = self::parseValues($values);
+        
+        if (self::isMediaUlidArray($values)) {
+            $mediaUrls = self::extractMediaUrls($values);
+        } else {
+            $mediaUrls = self::extractCdnUrlsFromFileData($values);
+        }
+        
+        $data[$record->valueColumn][$field->ulid] = self::filterValidUrls($mediaUrls);
 
         return $data;
     }
@@ -104,6 +108,72 @@ class Uploadcare extends Base implements FieldContract
             return $data;
         }
 
+        $values = self::findFieldValues($data[$record->valueColumn], $field->ulid);
+
+        if ($values === null) {
+            return $data;
+        }
+
+        $values = self::normalizeValues($values);
+        
+        if (!is_array($values)) {
+            return $data;
+        }
+
+        $media = self::processUploadedFiles($values);
+        $data[$record->valueColumn][$field->ulid] = collect($media)->pluck('ulid')->toArray();
+
+        return $data;
+    }
+
+    private static function getMediaModel(): string
+    {
+        return config('backstage.media.model', 'Backstage\\Models\\Media');
+    }
+
+    private static function parseValues(mixed $values): mixed
+    {
+        if (is_string($values)) {
+            $decoded = json_decode($values, true);
+            return json_last_error() === JSON_ERROR_NONE ? $decoded : [];
+        }
+        
+        return $values;
+    }
+
+    private static function isMediaUlidArray(array $values): bool
+    {
+        return isset($values[0]) && is_string($values[0]) && !isset($values[0]['uuid']);
+    }
+
+    private static function filterValidUrls(array $urls): array
+    {
+        return array_filter($urls, function($url) {
+            return filter_var($url, FILTER_VALIDATE_URL) !== false;
+        });
+    }
+
+    private static function extractMediaUrls(array $mediaUlids): array
+    {
+        $mediaModel = self::getMediaModel();
+        
+        return $mediaModel::whereIn('ulid', $mediaUlids)
+            ->get()
+            ->map(function ($media) {
+                if (!isset($media->metadata['cdnUrl'])) {
+                    return null;
+                }
+
+                $cdnUrl = $media->metadata['cdnUrl'];
+                
+                return filter_var($cdnUrl, FILTER_VALIDATE_URL) ? $cdnUrl : null;
+            })
+            ->filter()
+            ->toArray();
+    }
+
+    private static function findFieldValues(array $data, string $fieldUlid): mixed
+    {
         $findInNested = function ($array, $key) use (&$findInNested) {
             foreach ($array as $k => $value) {
                 if ($k === $key) {
@@ -120,59 +190,147 @@ class Uploadcare extends Base implements FieldContract
             return null;
         };
 
-        $values = $findInNested($data[$record->valueColumn], $field->ulid);
+        return $findInNested($data, $fieldUlid);
+    }
 
-        if ($values === null) {
-            return $data;
-        }
-
+    private static function normalizeValues(mixed $values): mixed
+    {
         if (is_string($values)) {
-            $values = json_decode($values, true);
+            return json_decode($values, true);
         }
 
-        if (! is_array($values)) {
-            return $data;
-        }
+        return $values;
+    }
 
+    private static function processUploadedFiles(array $files): array
+    {
         $media = [];
 
-        foreach ($values as $file) {
-            if (! is_array($file) && Media::where('checksum', md5_file($file))->exists()) {
-                continue;
+        foreach ($files as $file) {
+            $normalizedFiles = self::normalizeFileData($file);
+            
+            if (self::isArrayOfArrays($normalizedFiles)) {
+                foreach ($normalizedFiles as $singleFile) {
+                    if (!self::shouldSkipFile($singleFile)) {
+                        $media[] = self::createOrUpdateMediaRecord($singleFile);
+                    }
+                }
+            } else {
+                if (!self::shouldSkipFile($normalizedFiles)) {
+                    $media[] = self::createOrUpdateMediaRecord($normalizedFiles);
+                }
             }
-
-            $info = $file['fileInfo'];
-
-            $detailedInfo = ! empty($info['imageInfo'])
-                ? $info['imageInfo']
-                : (! empty($info['videoInfo'])
-                    ? $info['videoInfo']
-                    : (! empty($info['contentInfo'])
-                        ? $info['contentInfo']
-                        : []));
-
-            $media[] = Media::updateOrCreate([
-                'site_ulid' => Filament::getTenant()?->ulid,
-                'disk' => 'uploadcare',
-                'original_filename' => $info['name'],
-                'checksum' => md5_file($info['cdnUrl']),
-            ], [
-                'filename' => $info['uuid'],
-                'uploaded_by' => auth()->user()?->id,
-                'extension' => $detailedInfo['format'] ?? null,
-                'mime_type' => $info['mimeType'],
-                'size' => $info['size'],
-                'width' => isset($detailedInfo['width']) ? $detailedInfo['width'] : null,
-                'height' => isset($detailedInfo['height']) ? $detailedInfo['height'] : null,
-                'public' => config('media-picker.visibility') === 'public',
-                'metadata' => $info,
-            ]);
         }
 
-        $data[$record->valueColumn][$field->ulid] = collect($media)->map(function ($media) {
-            return $media->ulid;
-        })->toArray();
+        return $media;
+    }
 
-        return $data;
+    private static function isArrayOfArrays(mixed $data): bool
+    {
+        return is_array($data) && isset($data[0]) && is_array($data[0]);
+    }
+
+    private static function normalizeFileData(mixed $file): mixed
+    {
+        if (is_string($file)) {
+            return json_decode($file, true);
+        }
+
+        if (self::isArrayOfArrays($file)) {
+            return array_filter($file, 'is_array');
+        }
+
+        return $file;
+    }
+
+    private static function shouldSkipFile(mixed $file): bool
+    {
+        if (self::isArrayOfArrays($file)) {
+            foreach ($file as $singleFile) {
+                if (self::shouldSkipFile($singleFile)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        if (is_string($file)) {
+            return self::mediaExists($file);
+        }
+        
+        if (is_array($file)) {
+            $cdnUrl = self::extractCdnUrl($file);
+            return $cdnUrl ? self::mediaExists($cdnUrl) : false;
+        }
+
+        return false;
+    }
+
+    private static function mediaExists(string $file): bool
+    {
+        $mediaModel = self::getMediaModel();
+        return $mediaModel::where('checksum', md5_file($file))->exists();
+    }
+
+    private static function extractCdnUrl(array $file): ?string
+    {
+        $url = $file['cdnUrl'] ?? $file['fileInfo']['cdnUrl'] ?? null;
+        return $url && filter_var($url, FILTER_VALIDATE_URL) ? $url : null;
+    }
+
+    private static function createOrUpdateMediaRecord(array $file): Model
+    {
+        $mediaModel = self::getMediaModel();
+        
+        if (self::isArrayOfArrays($file)) {
+            $file = $file[0];
+        }
+        
+        $info = $file['fileInfo'] ?? $file;
+        $detailedInfo = self::extractDetailedInfo($info);
+
+        return $mediaModel::updateOrCreate([
+            'site_ulid' => Filament::getTenant()?->ulid,
+            'disk' => 'uploadcare',
+            'original_filename' => $info['name'],
+            'checksum' => md5_file($info['cdnUrl']),
+        ], [
+            'filename' => $info['uuid'],
+            'uploaded_by' => Auth::user()?->id,
+            'extension' => $detailedInfo['format'] ?? null,
+            'mime_type' => $info['mimeType'],
+            'size' => $info['size'],
+            'width' => $detailedInfo['width'] ?? null,
+            'height' => $detailedInfo['height'] ?? null,
+            'public' => config('media-picker.visibility') === 'public',
+            'metadata' => json_encode($info),
+        ]);
+    }
+
+    private static function extractDetailedInfo(array $info): array
+    {
+        return $info['imageInfo'] ?? $info['videoInfo'] ?? $info['contentInfo'] ?? [];
+    }
+
+    private static function extractCdnUrlsFromFileData(array $files): array
+    {
+        $cdnUrls = [];
+        
+        if (!is_array($files)) {
+            return $cdnUrls;
+        }
+        
+        foreach ($files as $file) {
+            if (!is_array($file)) {
+                continue;
+            }
+            
+            $cdnUrl = self::extractCdnUrl($file);
+            if ($cdnUrl) {
+                $cdnUrls[] = $cdnUrl;
+            }
+        }
+        
+        return $cdnUrls;
     }
 }
