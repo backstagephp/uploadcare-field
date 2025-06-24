@@ -19,7 +19,7 @@
         "php": "^8.2",
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/contracts": "^10.0||^11.0||^12.0",
-        "backstage/filament-uploadcare-field": "^1.0.1",
+        "backstage/filament-uploadcare-field": "^1.0.3",
         "backstage/fields": "dev-release/1.x"
     },
     "require-dev": {
@@ -78,12 +78,16 @@
             }
         }
     },
-    "minimum-stability": "beta",
+    "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": {
         "fields": {
             "type": "git",
             "url": "https://github.com/backstagephp/fields.git"
+        },
+        "saade/filament-adjacency-list": {
+            "type": "git",
+            "url": "git@github.com:backstagephp/filament-adjacency-list.git"
         }
     }
 }
