@@ -2,6 +2,11 @@
 
 namespace Backstage\UploadcareField;
 
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Grid;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Select;
 use Backstage\Fields\Contracts\FieldContract;
 use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
@@ -45,24 +50,24 @@ class Uploadcare extends Base implements FieldContract
     public function getForm(): array
     {
         return [
-            Forms\Components\Tabs::make()
+            Tabs::make()
                 ->schema([
-                    Forms\Components\Tabs\Tab::make('General')
+                    Tab::make('General')
                         ->label(__('General'))
                         ->schema([
                             ...parent::getForm(),
                         ]),
-                    Forms\Components\Tabs\Tab::make('Field specific')
+                    Tab::make('Field specific')
                         ->label(__('Field specific'))
                         ->schema([
-                            Forms\Components\Grid::make(2)->schema([
-                                Forms\Components\Toggle::make('config.multiple')
+                            Grid::make(2)->schema([
+                                Toggle::make('config.multiple')
                                     ->label(__('Multiple'))
                                     ->inline(false),
-                                Forms\Components\Toggle::make('config.imagesOnly')
+                                Toggle::make('config.imagesOnly')
                                     ->label(__('Images only'))
                                     ->inline(false),
-                                Forms\Components\Select::make('config.uploaderStyle')
+                                Select::make('config.uploaderStyle')
                                     ->label(__('Uploader style'))
                                     ->options([
                                         Style::INLINE->value => __('Inline'),
