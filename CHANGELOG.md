@@ -2,6 +2,15 @@
 
 All notable changes to `backstage-uploadcare-field` will be documented in this file.
 
+## v1.0.0 (Filament v4) - 2025-06-24
+
+### What's Changed
+
+* Bump stefanzweifel/git-auto-commit-action from 5 to 6 by @dependabot in https://github.com/backstagephp/uploadcare-field/pull/4
+* Upgrade to Filament v4 by @Baspa in https://github.com/backstagephp/uploadcare-field/pull/6
+
+**Full Changelog**: https://github.com/backstagephp/uploadcare-field/compare/v0.4.0...v1.0.0
+
 ## v0.4.0 - 2025-06-23
 
 ### What's Changed
