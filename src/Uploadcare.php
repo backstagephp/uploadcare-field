@@ -103,7 +103,6 @@ class Uploadcare extends Base implements FieldContract
             return $data;
         }
 
-
         $values = self::parseValues($values);
 
         if (self::isMediaUlidArray($values)) {
