@@ -63,6 +63,9 @@ class Uploadcare extends Base implements FieldContract
                                     ->inline(false),
                                 Forms\Components\Toggle::make('config.withMetadata')
                                     ->label(__('With metadata'))
+                                    ->formatStateUsing(function ($state) {
+                                        return $state ?? self::getDefaultConfig()['withMetadata'];
+                                    })
                                     ->inline(false),
                                 Forms\Components\Toggle::make('config.imagesOnly')
                                     ->label(__('Images only'))
