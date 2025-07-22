@@ -21,6 +21,7 @@ class Uploadcare extends Base implements FieldContract
             'uploaderStyle' => Style::INLINE->value,
             'multiple' => false,
             'imagesOnly' => false,
+            'withMetadata' => true,
         ];
     }
 
@@ -33,7 +34,8 @@ class Uploadcare extends Base implements FieldContract
 
         $input = $input->label($field->name ?? self::getDefaultConfig()['label'] ?? null)
             ->uploaderStyle(Style::tryFrom($field->config['uploaderStyle'] ?? null) ?? Style::tryFrom(self::getDefaultConfig()['uploaderStyle']))
-            ->multiple($field->config['multiple'] ?? self::getDefaultConfig()['multiple']);
+            ->multiple($field->config['multiple'] ?? self::getDefaultConfig()['multiple'])
+            ->withMetadata($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata']);
 
         if ($field->config['imagesOnly'] ?? self::getDefaultConfig()['imagesOnly']) {
             $input->imagesOnly();
@@ -58,6 +60,9 @@ class Uploadcare extends Base implements FieldContract
                             Forms\Components\Grid::make(2)->schema([
                                 Forms\Components\Toggle::make('config.multiple')
                                     ->label(__('Multiple'))
+                                    ->inline(false),
+                                Forms\Components\Toggle::make('config.withMetadata')
+                                    ->label(__('With metadata'))
                                     ->inline(false),
                                 Forms\Components\Toggle::make('config.imagesOnly')
                                     ->label(__('Images only'))
@@ -86,6 +91,14 @@ class Uploadcare extends Base implements FieldContract
 
         if (empty($values)) {
             $data[$record->valueColumn][$field->ulid] = [];
+
+            return $data;
+        }
+
+        if ($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata']) {
+            $values = self::parseValues($values);
+
+            $data[$record->valueColumn][$field->ulid] = $values;
 
             return $data;
         }
