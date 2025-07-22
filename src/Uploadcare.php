@@ -94,6 +94,7 @@ class Uploadcare extends Base implements FieldContract
 
         if ($values === '' || $values === [] || $values === null) {
             $data[$record->valueColumn][$field->ulid] = null;
+
             return $data;
         }
 
@@ -138,6 +139,7 @@ class Uploadcare extends Base implements FieldContract
 
         if ($values === '' || $values === [] || $values === null) {
             $data[$record->valueColumn][$field->ulid] = null;
+
             return $data;
         }
 
