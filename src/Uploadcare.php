@@ -92,6 +92,11 @@ class Uploadcare extends Base implements FieldContract
 
         $values = $record->values[$field->ulid];
 
+        if ($values === '' || $values === [] || $values === null) {
+            $data[$record->valueColumn][$field->ulid] = null;
+            return $data;
+        }
+
         if (empty($values)) {
             $data[$record->valueColumn][$field->ulid] = [];
 
@@ -131,7 +136,8 @@ class Uploadcare extends Base implements FieldContract
 
         $values = self::findFieldValues($data[$record->valueColumn], (string) $field->ulid);
 
-        if ($values === null) {
+        if ($values === '' || $values === [] || $values === null) {
+            $data[$record->valueColumn][$field->ulid] = null;
             return $data;
         }
 
@@ -231,8 +237,12 @@ class Uploadcare extends Base implements FieldContract
 
     private static function normalizeValues(mixed $values): mixed
     {
-        if (is_string($values)) {
+        if (is_string($values) && json_validate($values)) {
             return json_decode($values, true);
+        }
+
+        if (is_string($values)) {
+            return $values;
         }
 
         return $values;
