@@ -28,7 +28,7 @@ class Uploadcare extends Base implements FieldContract
     public static function make(string $name, Field $field): Input
     {
         $input = self::applyDefaultSettings(
-            input: Input::make($name)->withMetadata()->removeCopyright(),
+            input: Input::make($name)->removeCopyright(),
             field: $field
         );
 
@@ -92,24 +92,14 @@ class Uploadcare extends Base implements FieldContract
 
         $values = $record->values[$field->ulid];
 
-        if ($values === '' || $values === [] || $values === null) {
-            $data[$record->valueColumn][$field->ulid] = null;
-
-            return $data;
-        }
-
-        if (empty($values)) {
-            $data[$record->valueColumn][$field->ulid] = [];
-
-            return $data;
+        if ($values === '' || $values === [] || $values === null || empty($values)) {
+            return [];
         }
 
         if ($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata']) {
             $values = self::parseValues($values);
 
-            $data[$record->valueColumn][$field->ulid] = $values;
-
-            return $data;
+            return $values;
         }
 
         $values = self::parseValues($values);
@@ -120,9 +110,9 @@ class Uploadcare extends Base implements FieldContract
             $mediaUrls = self::extractCdnUrlsFromFileData($values);
         }
 
-        $data[$record->valueColumn][$field->ulid] = self::filterValidUrls($mediaUrls);
+        $values = self::filterValidUrls($mediaUrls);
 
-        return $data;
+        return $values;
     }
 
     public static function mutateBeforeSaveCallback(Model $record, Field $field, array $data): array
