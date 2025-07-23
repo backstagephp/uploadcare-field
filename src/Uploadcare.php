@@ -127,7 +127,7 @@ class Uploadcare extends Base implements FieldContract
 
     public static function mutateBeforeSaveCallback(Model $record, Field $field, array $data): array
     {
-        if (! property_exists($field, 'field_type') || $field->field_type !== 'uploadcare') {
+        if (! property_exists($field, 'field_type') && $field->field_type !== 'uploadcare') {
             return $data;
         }
 
@@ -145,11 +145,7 @@ class Uploadcare extends Base implements FieldContract
 
         $values = self::normalizeValues($values);
 
-        if (! is_array($values)) {
-            return $data;
-        }
-
-        $media = self::processUploadedFiles($values);
+        $media = self::processUploadedFiles(is_array($values) ? $values : [$values]);
         $data[$record->valueColumn][$field->ulid] = collect($media)->pluck('ulid')->toArray();
 
         return $data;
