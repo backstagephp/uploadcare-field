@@ -92,7 +92,7 @@ class Uploadcare extends Base implements FieldContract
 
         $values = $record->values[$field->ulid];
 
-        if ($values === '' || $values === [] || $values === null || empty($values)) {
+        if ($values == '' || $values == [] || $values == null || empty($values)) {
             return [];
         }
 
