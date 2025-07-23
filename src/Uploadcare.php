@@ -84,7 +84,6 @@ class Uploadcare extends Base implements FieldContract
         ];
     }
 
-    
     public static function mutateFormDataCallback(Model $record, Field $field, array $data): array
     {
         if (! property_exists($record, 'valueColumn') || ! isset($record->values[$field->ulid])) {
@@ -134,6 +133,7 @@ class Uploadcare extends Base implements FieldContract
 
         if ($values === '' || $values === [] || $values === null) {
             $data[$record->valueColumn][$field->ulid] = null;
+
             return $data;
         }
 
