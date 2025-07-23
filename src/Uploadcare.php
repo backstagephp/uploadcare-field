@@ -28,7 +28,7 @@ class Uploadcare extends Base implements FieldContract
     public static function make(string $name, Field $field): Input
     {
         $input = self::applyDefaultSettings(
-            input: Input::make($name)->removeCopyright(),
+            input: Input::make($name)->withMetadata()->removeCopyright(),
             field: $field
         );
 
@@ -84,6 +84,7 @@ class Uploadcare extends Base implements FieldContract
         ];
     }
 
+    
     public static function mutateFormDataCallback(Model $record, Field $field, array $data): array
     {
         if (! property_exists($record, 'valueColumn') || ! isset($record->values[$field->ulid])) {
@@ -93,13 +94,17 @@ class Uploadcare extends Base implements FieldContract
         $values = $record->values[$field->ulid];
 
         if ($values == '' || $values == [] || $values == null || empty($values)) {
-            return [];
+            $data[$record->valueColumn][$field->ulid] = [];
+
+            return $data;
         }
 
         if ($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata']) {
             $values = self::parseValues($values);
 
-            return $values;
+            $data[$record->valueColumn][$field->ulid] = $values;
+
+            return $data;
         }
 
         $values = self::parseValues($values);
@@ -110,14 +115,14 @@ class Uploadcare extends Base implements FieldContract
             $mediaUrls = self::extractCdnUrlsFromFileData($values);
         }
 
-        $values = self::filterValidUrls($mediaUrls);
+        $data[$record->valueColumn][$field->ulid] = self::filterValidUrls($mediaUrls);
 
-        return $values;
+        return $data;
     }
 
     public static function mutateBeforeSaveCallback(Model $record, Field $field, array $data): array
     {
-        if (! property_exists($field, 'field_type') && $field->field_type !== 'uploadcare') {
+        if (! property_exists($field, 'field_type') || $field->field_type !== 'uploadcare') {
             return $data;
         }
 
@@ -129,13 +134,16 @@ class Uploadcare extends Base implements FieldContract
 
         if ($values === '' || $values === [] || $values === null) {
             $data[$record->valueColumn][$field->ulid] = null;
-
             return $data;
         }
 
         $values = self::normalizeValues($values);
 
-        $media = self::processUploadedFiles(is_array($values) ? $values : [$values]);
+        if (! is_array($values)) {
+            return $data;
+        }
+
+        $media = self::processUploadedFiles($values);
         $data[$record->valueColumn][$field->ulid] = collect($media)->pluck('ulid')->toArray();
 
         return $data;
