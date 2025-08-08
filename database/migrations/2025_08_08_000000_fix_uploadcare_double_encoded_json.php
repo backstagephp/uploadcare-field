@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                $currentPath = $path === '' ? $key : $path . '.' . $key;
+                $currentPath = $path === '' ? $key : $path.'.'.$key;
                 if (is_string($value)) {
                     $decoded = $value;
                     $decodeCount = 0;
@@ -35,6 +35,7 @@ return new class extends Migration
                 }
             }
         }
+
         return $data;
     }
 
@@ -43,7 +44,7 @@ return new class extends Migration
      */
     private function decodeDoubleEncodedJson($value)
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return $value;
         }
 
@@ -62,6 +63,7 @@ return new class extends Migration
 
         if ($decodeCount > 1) {
             logger("Decoded double-encoded JSON ($decodeCount times)");
+
             return $this->decodeAllJsonStrings($decoded);
         }
 
@@ -74,7 +76,7 @@ return new class extends Migration
     public function up()
     {
         // Only run if the tables exist
-        if (!Schema::hasTable('content_field_values') && !Schema::hasTable('settings')) {
+        if (! Schema::hasTable('content_field_values') && ! Schema::hasTable('settings')) {
             return;
         }
 
@@ -91,6 +93,7 @@ return new class extends Migration
                             ->where('ulid', $row->ulid)
                             ->update(['value' => json_encode($decodedValue)]);
                         logger("Updated content_field_values (top-level): {$row->ulid}");
+
                         continue;
                     }
 
@@ -114,7 +117,9 @@ return new class extends Migration
             DB::table('settings')->orderBy('ulid')->chunk(100, function ($rows) {
                 foreach ($rows as $row) {
                     $values = $row->values;
-                    if ($values === null) continue;
+                    if ($values === null) {
+                        continue;
+                    }
 
                     // First check if the entire value is double-encoded
                     $decodedValues = $this->decodeDoubleEncodedJson($values);
@@ -123,6 +128,7 @@ return new class extends Migration
                             ->where('ulid', $row->ulid)
                             ->update(['values' => json_encode($decodedValues)]);
                         logger("Updated settings (top-level): {$row->ulid}");
+
                         continue;
                     }
 

@@ -30,14 +30,14 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
     {
         try {
             $migrationName = '2025_08_08_000000_fix_uploadcare_double_encoded_json';
-            
+
             // Check if migration has been run
-            $migrationExists = \Illuminate\Support\Facades\Schema::hasTable('migrations') && 
+            $migrationExists = \Illuminate\Support\Facades\Schema::hasTable('migrations') &&
                 \Illuminate\Support\Facades\DB::table('migrations')
-                    ->where('migration', 'like', '%' . $migrationName . '%')
+                    ->where('migration', 'like', '%'.$migrationName.'%')
                     ->exists();
 
-            if (!$migrationExists) {
+            if (! $migrationExists) {
                 \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
             }
         } catch (\Exception $e) {
