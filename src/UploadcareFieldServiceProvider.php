@@ -13,6 +13,9 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
             ->name('backstage/uploadcare-field')
             ->hasMigrations([
                 '2025_08_08_000000_fix_uploadcare_double_encoded_json',
-            ]);
+            ])
+            ->publishes([
+                __DIR__ . '/../database/migrations' => database_path('migrations'),
+            ], 'backstage-uploadcare-field-migrations');
     }
 }
