@@ -19,7 +19,7 @@
         "php": "^8.2",
         "spatie/laravel-package-tools": "^1.16",
         "illuminate/contracts": "^10.0||^11.0||^12.0",
-        "backstage/filament-uploadcare-field": "^0.3.6",
+        "backstage/filament-uploadcare-field": "^0.3.8",
         "backstage/fields": "^0.6.0"
     },
     "require-dev": {
@@ -48,6 +48,12 @@
     },
     "scripts": {
         "post-autoload-dump": "@composer run prepare",
+        "post-install-cmd": [
+            "@php -r \"if (file_exists('vendor/autoload.php')) { require_once 'vendor/autoload.php'; if (class_exists('Illuminate\\\\Support\\\\Facades\\\\Artisan') && file_exists('artisan')) { \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('vendor:publish', ['--provider' => 'Backstage\\\\UploadcareField\\\\UploadcareFieldServiceProvider']); \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('migrate', ['--force' => true]); } }\""
+        ],
+        "post-update-cmd": [
+            "@php -r \"if (file_exists('vendor/autoload.php')) { require_once 'vendor/autoload.php'; if (class_exists('Illuminate\\\\Support\\\\Facades\\\\Artisan') && file_exists('artisan')) { \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('vendor:publish', ['--provider' => 'Backstage\\\\UploadcareField\\\\UploadcareFieldServiceProvider']); \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('migrate', ['--force' => true]); } }\""
+        ],
         "clear": "@php vendor/bin/testbench package:purge-backstage-uploadcare-field --ansi",
         "prepare": "@php vendor/bin/testbench package:discover --ansi",
         "build": [

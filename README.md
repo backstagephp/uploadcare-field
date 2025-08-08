@@ -60,6 +60,25 @@ return [
 ];
 ```
 
+## Automatic Migration
+
+This package includes an automatic migration that fixes double-encoded JSON data in Uploadcare fields. This migration runs automatically when the package is installed or updated.
+
+### What the migration does:
+
+-   **Fixes double-encoded JSON**: Removes unnecessary JSON encoding layers that were created in earlier versions
+-   **Updates both tables**: Processes both `content_field_values` and `settings` tables
+-   **Safe execution**: Only runs if the relevant tables exist
+-   **Logging**: Logs all changes for transparency and debugging
+
+The migration will run automatically when you:
+
+-   Install the package for the first time
+-   Update the package via Composer
+-   Run `composer update` or `composer install`
+
+⚠️ **Important**: This migration is not reversible. Always make a database backup before updating the package.
+
 ## Usage
 
 After adding the Uploadcare field to your `backstage/fields.php` config file, the field will automatically be available in the Backstage CMS.
