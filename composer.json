@@ -49,10 +49,10 @@
     "scripts": {
         "post-autoload-dump": "@composer run prepare",
         "post-install-cmd": [
-            "@php -r \"if (file_exists('vendor/autoload.php')) { require_once 'vendor/autoload.php'; if (class_exists('Illuminate\\\\Support\\\\Facades\\\\Artisan')) { \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('vendor:publish', ['--provider' => 'Backstage\\\\UploadcareField\\\\UploadcareFieldServiceProvider']); \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('migrate', ['--force' => true]); } }\""
+            "@php -r \"if (file_exists('vendor/autoload.php')) { require_once 'vendor/autoload.php'; if (class_exists('Illuminate\\\\Support\\\\Facades\\\\Artisan') && file_exists('artisan')) { \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('vendor:publish', ['--provider' => 'Backstage\\\\UploadcareField\\\\UploadcareFieldServiceProvider']); \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('migrate', ['--force' => true]); } }\""
         ],
         "post-update-cmd": [
-            "@php -r \"if (file_exists('vendor/autoload.php')) { require_once 'vendor/autoload.php'; if (class_exists('Illuminate\\\\Support\\\\Facades\\\\Artisan')) { \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('vendor:publish', ['--provider' => 'Backstage\\\\UploadcareField\\\\UploadcareFieldServiceProvider']); \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('migrate', ['--force' => true]); } }\""
+            "@php -r \"if (file_exists('vendor/autoload.php')) { require_once 'vendor/autoload.php'; if (class_exists('Illuminate\\\\Support\\\\Facades\\\\Artisan') && file_exists('artisan')) { \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('vendor:publish', ['--provider' => 'Backstage\\\\UploadcareField\\\\UploadcareFieldServiceProvider']); \\\\Illuminate\\\\Support\\\\Facades\\\\Artisan::call('migrate', ['--force' => true]); } }\""
         ],
         "clear": "@php vendor/bin/testbench package:purge-backstage-uploadcare-field --ansi",
         "prepare": "@php vendor/bin/testbench package:discover --ansi",
