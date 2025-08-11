@@ -71,6 +71,7 @@ class Uploadcare extends Base implements FieldContract
                                         return $state ?? self::getDefaultConfig()['withMetadata'];
                                     })
                                     ->inline(false),
+                                Toggle::make('config.imagesOnly')
                                     ->label(__('Images only'))
                                     ->inline(false),
                                 Select::make('config.uploaderStyle')
