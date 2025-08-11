@@ -339,8 +339,6 @@ class Uploadcare extends Base implements FieldContract
         $info = $file['fileInfo'] ?? $file;
         $detailedInfo = self::extractDetailedInfo($info);
 
-        $tenantUlid = null;
-
         $tenantUlid = Filament::getTenant()->ulid ?? null;
 
         return $mediaModel::updateOrCreate([
@@ -350,7 +348,7 @@ class Uploadcare extends Base implements FieldContract
             'checksum' => md5_file($info['cdnUrl']),
         ], [
             'filename' => $info['uuid'],
-            'uploaded_by' => Auth::user()?->id,
+            'uploaded_by' => Auth::id(),
             'extension' => $detailedInfo['format'] ?? null,
             'mime_type' => $info['mimeType'],
             'size' => $info['size'],
