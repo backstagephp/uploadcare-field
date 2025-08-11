@@ -25,6 +25,7 @@ class Uploadcare extends Base implements FieldContract
             'uploaderStyle' => Style::INLINE->value,
             'multiple' => false,
             'imagesOnly' => false,
+            'withMetadata' => true,
         ];
     }
 
@@ -37,7 +38,8 @@ class Uploadcare extends Base implements FieldContract
 
         $input = $input->label($field->name ?? self::getDefaultConfig()['label'] ?? null)
             ->uploaderStyle(Style::tryFrom($field->config['uploaderStyle'] ?? null) ?? Style::tryFrom(self::getDefaultConfig()['uploaderStyle']))
-            ->multiple($field->config['multiple'] ?? self::getDefaultConfig()['multiple']);
+            ->multiple($field->config['multiple'] ?? self::getDefaultConfig()['multiple'])
+            ->withMetadata($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata']);
 
         if ($field->config['imagesOnly'] ?? self::getDefaultConfig()['imagesOnly']) {
             $input->imagesOnly();
@@ -62,6 +64,12 @@ class Uploadcare extends Base implements FieldContract
                             Grid::make(2)->schema([
                                 Toggle::make('config.multiple')
                                     ->label(__('Multiple'))
+                                    ->inline(false),
+                                Toggle::make('config.withMetadata')
+                                    ->label(__('With metadata'))
+                                    ->formatStateUsing(function ($state) {
+                                        return $state ?? self::getDefaultConfig()['withMetadata'];
+                                    })
                                     ->inline(false),
                                 Toggle::make('config.imagesOnly')
                                     ->label(__('Images only'))
@@ -88,8 +96,16 @@ class Uploadcare extends Base implements FieldContract
 
         $values = $record->values[$field->ulid];
 
-        if (empty($values)) {
+        if ($values == '' || $values == [] || $values == null || empty($values)) {
             $data[$record->valueColumn][$field->ulid] = [];
+
+            return $data;
+        }
+
+        if ($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata']) {
+            $values = self::parseValues($values);
+
+            $data[$record->valueColumn][$field->ulid] = $values;
 
             return $data;
         }
@@ -119,7 +135,9 @@ class Uploadcare extends Base implements FieldContract
 
         $values = self::findFieldValues($data[$record->valueColumn], (string) $field->ulid);
 
-        if ($values === null) {
+        if ($values === '' || $values === [] || $values === null) {
+            $data[$record->valueColumn][$field->ulid] = null;
+
             return $data;
         }
 
@@ -219,8 +237,12 @@ class Uploadcare extends Base implements FieldContract
 
     private static function normalizeValues(mixed $values): mixed
     {
-        if (is_string($values)) {
+        if (is_string($values) && json_validate($values)) {
             return json_decode($values, true);
+        }
+
+        if (is_string($values)) {
+            return $values;
         }
 
         return $values;
@@ -317,11 +339,7 @@ class Uploadcare extends Base implements FieldContract
         $info = $file['fileInfo'] ?? $file;
         $detailedInfo = self::extractDetailedInfo($info);
 
-        $tenantUlid = null;
-        if (class_exists(Filament::class) && method_exists(Filament::class, 'getTenant')) {
-            $tenant = Filament::getTenant();
-            $tenantUlid = $tenant?->ulid ?? null;
-        }
+        $tenantUlid = Filament::getTenant()->ulid ?? null;
 
         return $mediaModel::updateOrCreate([
             'site_ulid' => $tenantUlid,
@@ -330,7 +348,7 @@ class Uploadcare extends Base implements FieldContract
             'checksum' => md5_file($info['cdnUrl']),
         ], [
             'filename' => $info['uuid'],
-            'uploaded_by' => Auth::user()?->id,
+            'uploaded_by' => Auth::id(),
             'extension' => $detailedInfo['format'] ?? null,
             'mime_type' => $info['mimeType'],
             'size' => $info['size'],
@@ -349,10 +367,6 @@ class Uploadcare extends Base implements FieldContract
     private static function extractCdnUrlsFromFileData(array $files): array
     {
         $cdnUrls = [];
-
-        if (! is_array($files)) {
-            return $cdnUrls;
-        }
 
         foreach ($files as $file) {
             if (! is_array($file)) {

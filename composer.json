@@ -74,7 +74,7 @@
                 "Backstage\\UploadcareField\\UploadcareFieldServiceProvider"
             ],
             "aliases": {
-                "UploadcareField": "Backstage\\UploadcareField\\Facades\\UploadcareField"
+                "UploadcareField": "Backstage\\UploadcareField\\Facades\\Uploadcare"
             }
         }
     },
