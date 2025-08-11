@@ -341,7 +341,7 @@ class Uploadcare extends Base implements FieldContract
 
         $tenantUlid = null;
 
-        $tenantUlid = Filament::getTenant()?->ulid ?? null;
+        $tenantUlid = Filament::getTenant()->ulid ?? null;
 
         return $mediaModel::updateOrCreate([
             'site_ulid' => $tenantUlid,
