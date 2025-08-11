@@ -340,10 +340,8 @@ class Uploadcare extends Base implements FieldContract
         $detailedInfo = self::extractDetailedInfo($info);
 
         $tenantUlid = null;
-        if (class_exists(Filament::class) && method_exists(Filament::class, 'getTenant')) {
-            $tenant = Filament::getTenant();
-            $tenantUlid = $tenant?->ulid ?? null;
-        }
+
+        $tenantUlid = Filament::getTenant()?->ulid ?? null;
 
         return $mediaModel::updateOrCreate([
             'site_ulid' => $tenantUlid,
@@ -371,10 +369,6 @@ class Uploadcare extends Base implements FieldContract
     private static function extractCdnUrlsFromFileData(array $files): array
     {
         $cdnUrls = [];
-
-        if (! is_array($files)) {
-            return $cdnUrls;
-        }
 
         foreach ($files as $file) {
             if (! is_array($file)) {
