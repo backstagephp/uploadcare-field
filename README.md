@@ -83,6 +83,112 @@ The migration will run automatically when you:
 
 After adding the Uploadcare field to your `backstage/fields.php` config file, the field will automatically be available in the Backstage CMS.
 
+### Field Configuration
+
+The Uploadcare field supports several configuration options:
+
+- **Multiple**: Allow multiple file uploads
+- **With metadata**: Store full file metadata (recommended for cropping support)
+- **Images only**: Restrict uploads to image files only
+- **Uploader style**: Choose between Inline, Minimal, or Regular uploader styles
+
+### Image Cropping and Transformations
+
+The Uploadcare field stores comprehensive metadata about uploaded images, including cropping information. This allows you to access both the original and cropped versions of images in your front-end.
+
+#### Understanding the Data Structure
+
+When an image is uploaded and cropped, the field stores data in this format:
+
+```json
+{
+  "uuid": "12345678-1234-1234-1234-123456789abc",
+  "cdnUrl": "https://ucarecdn.com/12345678-1234-1234-1234-123456789abc/-/crop/912x442/815,0/-/preview/",
+  "cdnUrlModifiers": "-/crop/912x442/815,0/-/preview/",
+  "fileInfo": {
+    "uuid": "12345678-1234-1234-1234-123456789abc",
+    "cdnUrl": "https://ucarecdn.com/12345678-1234-1234-1234-123456789abc/",
+    "imageInfo": {
+      "width": 1783,
+      "height": 442,
+      "format": "JPEG"
+    }
+  }
+}
+```
+
+#### Cropping Parameters Explained
+
+The cropping is defined by URL parameters:
+- `-/crop/912x442/815,0/`: 
+  - `912x442` = target width and height
+  - `815,0` = x,y coordinates where cropping starts
+- `-/preview/` = preview mode
+
+#### Front-end Usage
+
+##### 1. Direct URL Access
+
+```php
+// Access the cropped version
+$croppedUrl = $image['cdnUrl']; // Contains crop parameters
+
+// Access the original version
+$originalUrl = $image['fileInfo']['cdnUrl']; // No crop parameters
+```
+
+##### 2. Using Uploadcare Transformations
+
+If you have the `backstage/php-uploadcare-transformations` package installed:
+
+```php
+// Basic resize
+$resizedImage = uc($image['uuid'])->resize(width: 800);
+
+// Smart crop with AI
+$smartCropped = uc($image['uuid'])->smartCrop(width: 400, height: 300, type: 'smart_objects');
+
+// Manual crop
+$manualCrop = uc($image['uuid'])->crop(width: 400, height: 300, x: 100, y: 50);
+```
+
+##### 3. In Blade Templates
+
+```blade
+{{-- Use the pre-cropped version --}}
+<img src="{{ $image['cdnUrl'] }}" alt="Cropped image" />
+
+{{-- Use the original version --}}
+<img src="{{ $image['fileInfo']['cdnUrl'] }}" alt="Original image" />
+
+{{-- Apply new transformations --}}
+<img src="{{ uc($image['uuid'])->resize(width: 600) }}" alt="Resized image" />
+```
+
+#### Best Practices
+
+1. **Enable metadata storage**: Set `withMetadata: true` in your field configuration to ensure cropping information is preserved.
+
+2. **Use appropriate versions**: 
+   - Use `cdnUrl` for pre-cropped images
+   - Use `fileInfo.cdnUrl` for original images
+   - Apply new transformations as needed
+
+3. **Performance considerations**: 
+   - Pre-cropped images load faster than on-the-fly transformations
+   - Use appropriate image sizes for your use case
+   - Consider using WebP format for better compression
+
+4. **Responsive images**: Use different crop sizes for different screen sizes:
+
+```php
+// Mobile
+$mobileImage = uc($image['uuid'])->resize(width: 400);
+
+// Desktop  
+$desktopImage = uc($image['uuid'])->resize(width: 1200);
+```
+
 ## Testing
 
 ```bash
