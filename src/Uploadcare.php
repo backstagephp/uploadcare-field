@@ -70,6 +70,7 @@ class Uploadcare extends Base implements FieldContract
                                     ->formatStateUsing(function ($state, $record) {
                                         // Check if withMetadata exists in the config
                                         $config = is_string($record->config) ? json_decode($record->config, true) : $record->config;
+
                                         return isset($config['withMetadata']) ? $config['withMetadata'] : self::getDefaultConfig()['withMetadata'];
                                     })
                                     ->inline(false),
