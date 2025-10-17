@@ -7,12 +7,15 @@ use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
 use Backstage\Uploadcare\Enums\Style;
 use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
+use Backstage\UploadcareField\Forms\Components\MediaGridPicker;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -35,6 +38,23 @@ class Uploadcare extends Base implements FieldContract
             input: Input::make($name)->withMetadata()->removeCopyright(),
             field: $field
         );
+
+        $input = $input->hintActions([
+            Action::make('mediaPicker')
+                ->hiddenLabel()
+                ->tooltip(__('Select from Media'))
+                ->icon(Heroicon::Photo)
+                ->color('gray')
+                ->size('sm')
+                ->modalHeading(__('Select Media'))
+                ->modalSubmitActionLabel(__('Select'))
+                ->modalCancelActionLabel(__('Cancel'))
+                ->schema([
+                    MediaGridPicker::make('media_picker')
+                        ->fieldName($name)
+                        ->perPage(12),
+                ]),
+        ]);
 
         $input = $input->label($field->name ?? self::getDefaultConfig()['label'] ?? null)
             ->uploaderStyle(Style::tryFrom($field->config['uploaderStyle'] ?? null) ?? Style::tryFrom(self::getDefaultConfig()['uploaderStyle']))
@@ -140,6 +160,7 @@ class Uploadcare extends Base implements FieldContract
 
         if ($values === '' || $values === [] || $values === null) {
             $data[$record->valueColumn][$field->ulid] = null;
+
             return $data;
         }
 

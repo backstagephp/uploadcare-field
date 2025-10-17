@@ -60,6 +60,32 @@ return [
 ];
 ```
 
+### CSS and Styling
+
+This package includes a MediaGridPicker component that requires Tailwind CSS classes to be properly compiled. The package automatically registers its CSS assets with Filament, but you may need to ensure your main application's Tailwind build includes the package's source files.
+
+If you're using Tailwind CSS v4 in your main application, add the package's source directories to your `resources/css/sources.css` file:
+
+```css
+@source "/path/to/backstage-uploadcare-field/resources/";
+@source "/path/to/backstage-uploadcare-field/src/";
+```
+
+For Tailwind CSS v3, add the package paths to your `tailwind.config.js`:
+
+```javascript
+module.exports = {
+  content: [
+    // ... your existing paths
+    './vendor/backstage/uploadcare-field/resources/**/*.blade.php',
+    './vendor/backstage/uploadcare-field/src/**/*.php',
+  ],
+  // ... rest of your config
+}
+```
+
+The package's CSS is automatically loaded in Filament admin panels and includes all necessary styles for the MediaGridPicker component.
+
 ## Automatic Migration
 
 This package includes an automatic migration that fixes double-encoded JSON data in Uploadcare fields. This migration runs automatically when the package is installed or updated.
