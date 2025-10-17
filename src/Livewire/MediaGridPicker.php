@@ -53,10 +53,10 @@ class MediaGridPicker extends Component
 
     public function selectMedia(array $media): void
     {
-        $this->dispatch('media-selected', [
-            'fieldName' => $this->fieldName,
-            'media' => $media,
-        ]);
+        $this->dispatch('media-selected', 
+            fieldName: $this->fieldName,
+            media: $media
+        );
     }
 
     public function render()

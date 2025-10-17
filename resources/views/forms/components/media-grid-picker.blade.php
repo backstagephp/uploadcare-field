@@ -4,7 +4,25 @@
 >
     <div x-data="{
         handleMediaSelected(event) {
-            const { fieldName, media } = event.detail;
+            console.log('Event received:', event);
+            console.log('Event detail:', event.detail);
+            
+            // Handle both Livewire event format and direct data
+            let fieldName, media;
+            
+            if (event.detail && event.detail.fieldName && event.detail.media) {
+                // Livewire event format
+                fieldName = event.detail.fieldName;
+                media = event.detail.media;
+            } else if (event.detail && event.detail.length === 2) {
+                // Alternative format: [fieldName, media]
+                fieldName = event.detail[0];
+                media = event.detail[1];
+            } else {
+                console.error('Unexpected event format:', event);
+                return;
+            }
+            
             console.log('Media selected:', media);
             console.log('Field name:', fieldName);
             console.log('CDN URL:', media.cdn_url);
