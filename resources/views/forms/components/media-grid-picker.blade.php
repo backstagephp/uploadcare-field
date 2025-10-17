@@ -29,28 +29,69 @@
                     if (alpineData.statePath === fieldName || alpineData.statePath.endsWith('.' + fieldName) || alpineData.statePath.endsWith('[' + fieldName + ']')) {
                         console.log('Found matching Uploadcare component, updating state');
                         // Found the Uploadcare component, update its state
-                        const cdnUrl = 'https://ucarecdn.com/' + uuid;
+                        console.log('Using UUID for update:', uuid);
                         
-                        if (typeof alpineData.updateState === 'function') {
-                            console.log('Using updateState method');
-                            if (alpineData.isMultiple) {
-                                const currentFiles = alpineData.getCurrentFiles();
-                                const updatedFiles = [...currentFiles, cdnUrl];
-                                alpineData.updateState(updatedFiles);
+                        // Create a proper file object that matches the existing format
+                        const newFileObject = {
+                            uuid: uuid,
+                            cdnUrl: 'https://ucarecdn.com/' + uuid,
+                            name: 'Selected Media',
+                            isImage: true,
+                            mimeType: 'image/jpeg', // Default assumption
+                            size: 0,
+                            isSuccess: true,
+                            isUploading: false,
+                            isFailed: false,
+                            isRemoved: false,
+                            isValidationPending: false,
+                            errors: [],
+                            status: 'success',
+                            uploadProgress: 100,
+                            source: 'media-picker'
+                        };
+                        
+                        // Try to add the file directly to the Uploadcare widget using the API
+                        try {
+                            console.log('Attempting to add file to Uploadcare widget via API');
+                            
+                            // Get the Uploadcare context and API
+                            const ctx = alpineData.ctx;
+                            if (ctx && typeof ctx.getAPI === 'function') {
+                                const api = ctx.getAPI();
+                                console.log('Got Uploadcare API:', api);
+                                
+                                if (api && typeof api.addFileFromUuid === 'function') {
+                                    console.log('Adding file with UUID:', uuid);
+                                    api.addFileFromUuid(uuid);
+                                    console.log('File added to Uploadcare widget successfully');
+                                } else {
+                                    console.error('addFileFromUuid method not available on API');
+                                }
                             } else {
-                                alpineData.updateState([cdnUrl]);
+                                console.error('Could not get Uploadcare API from context');
                             }
-                        } else if (typeof alpineData.uploadedFiles !== 'undefined') {
-                            console.log('Using direct uploadedFiles update');
-                            const currentFiles = alpineData.uploadedFiles ? JSON.parse(alpineData.uploadedFiles) : [];
-                            const updatedFiles = [...currentFiles, cdnUrl];
-                            alpineData.uploadedFiles = JSON.stringify(updatedFiles);
-                            alpineData.state = alpineData.uploadedFiles;
-                        } else {
-                            console.log('Using direct state update');
-                            const currentFiles = alpineData.state ? JSON.parse(alpineData.state) : [];
-                            const updatedFiles = [...currentFiles, cdnUrl];
-                            alpineData.state = JSON.stringify(updatedFiles);
+                        } catch (error) {
+                            console.error('Error adding file to Uploadcare widget:', error);
+                            
+                            // Fallback to updateState method
+                            console.log('Falling back to updateState method');
+                            if (typeof alpineData.updateState === 'function') {
+                                try {
+                                    if (alpineData.isMultiple) {
+                                        const currentFiles = alpineData.getCurrentFiles();
+                                        console.log('Current files:', currentFiles);
+                                        const updatedFiles = [...currentFiles, newFileObject];
+                                        console.log('Updated files array:', updatedFiles);
+                                        alpineData.updateState(updatedFiles);
+                                    } else {
+                                        console.log('Single file mode, setting:', [newFileObject]);
+                                        alpineData.updateState([newFileObject]);
+                                    }
+                                    console.log('updateState method completed successfully');
+                                } catch (updateError) {
+                                    console.error('Error calling updateState:', updateError);
+                                }
+                            }
                         }
                         
                         console.log('State updated, closing modal');
