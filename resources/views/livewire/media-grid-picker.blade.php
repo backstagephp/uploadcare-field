@@ -12,7 +12,7 @@
         @forelse($this->mediaItems as $media)
             <div 
                 wire:click="selectMedia({{ json_encode($media) }})"
-                class="relative group cursor-pointer rounded-lg border-2 transition-all duration-200 hover:shadow-md border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
+                class="relative group cursor-pointer rounded-lg border-2 transition-all duration-200 hover:shadow-md {{ $selectedMediaId === $media['id'] ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600' }}"
             >
                 @if($media['is_image'] && $media['cdn_url'])
                     <div class="aspect-square rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
@@ -37,6 +37,16 @@
                         <div class="text-xs text-gray-500 dark:text-gray-400">{{ $media['width'] }}×{{ $media['height'] }}</div>
                     @endif
                 </div>
+                
+                @if($selectedMediaId === $media['id'])
+                    <div class="absolute top-1 right-1">
+                        <div class="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                            <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+                @endif
             </div>
         @empty
             <div class="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">

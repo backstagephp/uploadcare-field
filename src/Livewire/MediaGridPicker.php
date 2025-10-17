@@ -15,6 +15,8 @@ class MediaGridPicker extends Component
 
     public int $perPage = 12;
 
+    public ?string $selectedMediaId = null;
+
     public function mount(string $fieldName, int $perPage = 12): void
     {
         $this->fieldName = $fieldName;
@@ -53,6 +55,8 @@ class MediaGridPicker extends Component
 
     public function selectMedia(array $media): void
     {
+        $this->selectedMediaId = $media['id'];
+        
         $this->dispatch('media-selected', 
             fieldName: $this->fieldName,
             media: $media
