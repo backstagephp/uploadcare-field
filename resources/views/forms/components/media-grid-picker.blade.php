@@ -2,70 +2,71 @@
     :component="$getFieldWrapperView()"
     :field="$field"
 >
-    <div x-data="{
-        handleMediaSelected(event) {
-            console.log('Event received:', event);
-            console.log('Event detail:', event.detail);
+    <div 
+        x-data="{}" 
+        x-init="
+            // Hide the modal's submit button
+            setTimeout(() => {
+                const submitBtn = document.querySelector('[data-filament-modal-submit]');
+                if (submitBtn) {
+                    submitBtn.style.display = 'none';
+                }
+            }, 100);
+        "
+        @media-selected="
+            console.log('media-selected event received:', $event.detail);
+            const fieldName = $event.detail.fieldName;
+            const uuid = $event.detail.uuid;
             
-            // Handle both Livewire event format and direct data
-            let fieldName, media;
+            // Find the Uploadcare Alpine component by statePath
+            const uploadcareElements = document.querySelectorAll('[x-data]');
+            let found = false;
             
-            if (event.detail && event.detail.fieldName && event.detail.media) {
-                // Livewire event format
-                fieldName = event.detail.fieldName;
-                media = event.detail.media;
-            } else if (event.detail && event.detail.length === 2) {
-                // Alternative format: [fieldName, media]
-                fieldName = event.detail[0];
-                media = event.detail[1];
-            } else {
-                console.error('Unexpected event format:', event);
-                return;
-            }
-            
-            console.log('Media selected:', media);
-            console.log('Field name:', fieldName);
-            console.log('CDN URL:', media.cdn_url);
-            
-            const cdnUrl = media.cdn_url;
-            
-            if (!cdnUrl) {
-                console.error('No CDN URL available for selected media');
-                return;
-            }
-            
-            let uuid = cdnUrl;
-            if (cdnUrl.includes('ucarecdn.com/')) {
-                const match = cdnUrl.match(/ucarecdn\.com\/([^\/\?]+)/);
-                if (match) {
-                    uuid = match[1];
+            for (const el of uploadcareElements) {
+                const alpineData = Alpine.$data(el);
+                if (alpineData && alpineData.statePath) {
+                    // Check if statePath ends with the field name or contains it
+                    if (alpineData.statePath === fieldName || alpineData.statePath.endsWith('.' + fieldName) || alpineData.statePath.endsWith('[' + fieldName + ']')) {
+                        console.log('Found matching Uploadcare component, updating state');
+                        // Found the Uploadcare component, update its state
+                        const cdnUrl = 'https://ucarecdn.com/' + uuid;
+                        
+                        if (typeof alpineData.updateState === 'function') {
+                            console.log('Using updateState method');
+                            if (alpineData.isMultiple) {
+                                const currentFiles = alpineData.getCurrentFiles();
+                                const updatedFiles = [...currentFiles, cdnUrl];
+                                alpineData.updateState(updatedFiles);
+                            } else {
+                                alpineData.updateState([cdnUrl]);
+                            }
+                        } else if (typeof alpineData.uploadedFiles !== 'undefined') {
+                            console.log('Using direct uploadedFiles update');
+                            const currentFiles = alpineData.uploadedFiles ? JSON.parse(alpineData.uploadedFiles) : [];
+                            const updatedFiles = [...currentFiles, cdnUrl];
+                            alpineData.uploadedFiles = JSON.stringify(updatedFiles);
+                            alpineData.state = alpineData.uploadedFiles;
+                        } else {
+                            console.log('Using direct state update');
+                            const currentFiles = alpineData.state ? JSON.parse(alpineData.state) : [];
+                            const updatedFiles = [...currentFiles, cdnUrl];
+                            alpineData.state = JSON.stringify(updatedFiles);
+                        }
+                        
+                        console.log('State updated, closing modal');
+                        found = true;
+                        
+                        // Close the modal
+                        $wire.call('callMountedAction', ['close']);
+                        break;
+                    }
                 }
             }
             
-            console.log('Using UUID for file selection:', uuid);
-            
-            const hiddenInputs = document.querySelectorAll('input[type=hidden]');
-            let targetInput = null;
-            
-            for (const input of hiddenInputs) {
-                if (input.name && input.name.includes(fieldName)) {
-                    targetInput = input;
-                    break;
-                }
+            if (!found) {
+                console.error('Could not find Uploadcare component for field:', fieldName);
             }
-            
-            if (targetInput) {
-                console.log('Found target input:', targetInput);
-                targetInput.value = uuid;
-                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-                console.log('Set input value to:', uuid);
-            } else {
-                console.warn('Could not find target input for field:', fieldName);
-            }
-        }
-    }" 
-    @media-selected="handleMediaSelected($event)"
+        "
     >
         @livewire('backstage-uploadcare-field::media-grid-picker', [
             'fieldName' => $getFieldName(),

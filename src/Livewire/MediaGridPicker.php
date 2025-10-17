@@ -55,13 +55,47 @@ class MediaGridPicker extends Component
 
     public function selectMedia(array $media): void
     {
+        \Log::info('selectMedia called', ['media' => $media]);
         $this->selectedMediaId = $media['id'];
+        \Log::info('selectedMediaId set to', ['selectedMediaId' => $this->selectedMediaId]);
+    }
+    
+    public function confirmSelection(): void
+    {
+        \Log::info('confirmSelection called', ['selectedMediaId' => $this->selectedMediaId]);
         
+        if (!$this->selectedMediaId) {
+            \Log::info('No selectedMediaId, returning');
+            return;
+        }
+        
+        // Find the selected media from the current page
+        $selectedMedia = $this->mediaItems->firstWhere('id', $this->selectedMediaId);
+        
+        \Log::info('Selected media found', ['selectedMedia' => $selectedMedia]);
+        
+        if (!$selectedMedia) {
+            \Log::info('No selectedMedia found, returning');
+            return;
+        }
+        
+        // Extract UUID from CDN URL
+        $cdnUrl = $selectedMedia['cdn_url'];
+        $uuid = $cdnUrl;
+        
+        if (str_contains($cdnUrl, 'ucarecdn.com/')) {
+            if (preg_match('/ucarecdn\.com\/([^\/\?]+)/', $cdnUrl, $matches)) {
+                $uuid = $matches[1];
+            }
+        }
+        
+        // Dispatch browser event with the UUID
         $this->dispatch('media-selected', 
             fieldName: $this->fieldName,
-            media: $media
+            uuid: $uuid
         );
     }
+    
 
     public function render()
     {

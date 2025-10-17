@@ -47,7 +47,6 @@ class Uploadcare extends Base implements FieldContract
                 ->color('gray')
                 ->size('sm')
                 ->modalHeading(__('Select Media'))
-                ->modalSubmitActionLabel(__('Select'))
                 ->modalCancelActionLabel(__('Cancel'))
                 ->schema([
                     MediaGridPicker::make('media_picker')

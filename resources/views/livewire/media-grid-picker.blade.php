@@ -58,6 +58,20 @@
         @endforelse
     </div>
 
+    @if($selectedMediaId)
+        <div class="flex items-center justify-center pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button 
+                type="button"
+                wire:click="confirmSelection"
+                style="display: inline-block; padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s;"
+                onmouseover="this.style.backgroundColor='#1d4ed8'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 8px -1px rgba(0, 0, 0, 0.15)'"
+                onmouseout="this.style.backgroundColor='#2563eb'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(0, 0, 0, 0.1)'"
+            >
+                Select
+            </button>
+        </div>
+    @endif
+
     @if($this->mediaItems->hasPages())
         <div class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex items-center space-x-2">

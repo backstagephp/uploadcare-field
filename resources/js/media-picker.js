@@ -365,3 +365,66 @@ window.mediaPickerData = function(initialData) {
         console.log('Available elements:', document.querySelectorAll('[data-field-name], [name], [id]'));
 }
 
+// Global function for handling media selection
+console.log('Media picker JS loaded, defining handleMediaSelection function');
+window.handleMediaSelection = function(event) {
+    console.log('Event received:', event);
+    console.log('Event detail:', event.detail);
+    
+    let fieldName, media;
+    
+    if (event.detail && event.detail.fieldName && event.detail.media) {
+        fieldName = event.detail.fieldName;
+        media = event.detail.media;
+    } else if (event.detail && event.detail.length === 2) {
+        fieldName = event.detail[0];
+        media = event.detail[1];
+    } else {
+        console.error('Unexpected event format:', event);
+        return;
+    }
+    
+    console.log('Media selected:', media);
+    console.log('Field name:', fieldName);
+    console.log('CDN URL:', media.cdn_url);
+    
+    const cdnUrl = media.cdn_url;
+    
+    if (!cdnUrl) {
+        console.error('No CDN URL available for selected media');
+        return;
+    }
+    
+    let uuid = cdnUrl;
+    if (cdnUrl.includes('ucarecdn.com/')) {
+        const match = cdnUrl.match(/ucarecdn\.com\/([^\/\?]+)/);
+        if (match) {
+            uuid = match[1];
+        }
+    }
+    
+    console.log('Using UUID for file selection:', uuid);
+    
+    let targetInput = document.querySelector('input[name="' + fieldName + '"]');
+    
+    if (!targetInput) {
+        const hiddenInputs = document.querySelectorAll('input[type=hidden]');
+        for (const input of hiddenInputs) {
+            if (input.name && input.name.includes(fieldName)) {
+                targetInput = input;
+                break;
+            }
+        }
+    }
+    
+    if (targetInput) {
+        console.log('Found target input, setting value to:', uuid);
+        targetInput.value = uuid;
+        targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+        console.log('Successfully set input value');
+    } else {
+        console.warn('Could not find target input for field:', fieldName);
+    }
+};
+
