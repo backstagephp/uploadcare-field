@@ -52,6 +52,6 @@
         @livewire('backstage-uploadcare-field::media-grid-picker', [
             'fieldName' => $getFieldName(),
             'perPage' => $getPerPage()
-        ])
+        ], key('media-grid-picker-' . $getFieldName()))
     </div>
 </x-dynamic-component>

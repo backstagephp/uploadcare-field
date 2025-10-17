@@ -52,7 +52,7 @@
         <div class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex items-center space-x-2">
                 <button 
-                    wire:click="previousPage"
+                    wire:click.prevent="previousPage"
                     wire:loading.attr="disabled"
                     @disabled($this->mediaItems->onFirstPage())
                     class="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -65,7 +65,7 @@
                 </span>
                 
                 <button 
-                    wire:click="nextPage"
+                    wire:click.prevent="nextPage"
                     wire:loading.attr="disabled"
                     @disabled(!$this->mediaItems->hasMorePages())
                     class="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -77,7 +77,7 @@
             <div class="flex items-center space-x-2">
                 <span class="text-sm text-gray-700 dark:text-gray-300">{{ __('Per page') }}:</span>
                 <select 
-                    wire:change="updatePerPage(parseInt($event.target.value))"
+                    wire:change.prevent="updatePerPage(parseInt($event.target.value))"
                     wire:loading.attr="disabled"
                     class="text-sm border border-gray-300 rounded-md px-2 py-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
