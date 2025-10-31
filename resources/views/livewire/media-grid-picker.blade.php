@@ -1,4 +1,20 @@
-<div class="space-y-4">
+<div class="space-y-4" 
+     x-data="{}"
+     @set-hidden-field="
+         console.log('set-hidden-field event received:', $event.detail);
+         const fieldName = $event.detail.fieldName;
+         const value = $event.detail.value;
+         
+         // Find the hidden input in the modal
+         const modal = $el.closest('[data-filament-modal]');
+         if (modal) {
+             const hiddenInput = modal.querySelector('input[name=' + fieldName + ']');
+             if (hiddenInput) {
+                 hiddenInput.value = value;
+                 console.log('Set hidden field value to:', value);
+             }
+         }
+     ">
     <div class="flex items-center justify-between">
         <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
             {{ __('Select Media') }}
@@ -63,6 +79,7 @@
             <button 
                 type="button"
                 wire:click="confirmSelection"
+                onclick="console.log('Select button clicked'); $wire.call('confirmSelection');"
                 style="display: inline-block; padding: 8px 16px; background-color: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s;"
                 onmouseover="this.style.backgroundColor='#1d4ed8'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 8px -1px rgba(0, 0, 0, 0.15)'"
                 onmouseout="this.style.backgroundColor='#2563eb'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(0, 0, 0, 0.1)'"

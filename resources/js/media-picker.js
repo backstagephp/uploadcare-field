@@ -365,6 +365,36 @@ window.mediaPickerData = function(initialData) {
         console.log('Available elements:', document.querySelectorAll('[data-field-name], [name], [id]'));
 }
 
+// Global event listener for media picker selection
+window.addEventListener('media-picker-selected', function(event) {
+    console.log('media-picker-selected event received:', event.detail);
+    const { fieldName, value } = event.detail;
+    
+    // Find the target input field
+    let targetInput = document.querySelector(`input[name="${fieldName}"]`);
+    
+    if (!targetInput) {
+        // Try to find hidden inputs or inputs with the field name in their ID
+        const hiddenInputs = document.querySelectorAll('input[type=hidden]');
+        for (const input of hiddenInputs) {
+            if (input.name && input.name.includes(fieldName)) {
+                targetInput = input;
+                break;
+            }
+        }
+    }
+    
+    if (targetInput) {
+        console.log('Found target input, setting value to:', value);
+        targetInput.value = value;
+        targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+        console.log('Successfully set input value');
+    } else {
+        console.warn('Could not find target input for field:', fieldName);
+    }
+});
+
 // Global function for handling media selection
 console.log('Media picker JS loaded, defining handleMediaSelection function');
 window.handleMediaSelection = function(event) {

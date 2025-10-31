@@ -60,8 +60,12 @@ class MediaGridPicker extends Component
         \Log::info('selectedMediaId set to', ['selectedMediaId' => $this->selectedMediaId]);
     }
     
-    public function confirmSelection(): void
+    public function confirmSelection(string|null $selectedMediaId = null): void
     {
+        if ($selectedMediaId) {
+            $this->selectedMediaId = $selectedMediaId;
+        }
+
         \Log::info('confirmSelection called', ['selectedMediaId' => $this->selectedMediaId]);
         
         if (!$this->selectedMediaId) {
@@ -88,6 +92,12 @@ class MediaGridPicker extends Component
                 $uuid = $matches[1];
             }
         }
+        
+        // Set the hidden field value directly
+        $this->dispatch('set-hidden-field', 
+            fieldName: 'selected_media_uuid',
+            value: $uuid
+        );
         
         // Dispatch browser event with the UUID
         $this->dispatch('media-selected', 
