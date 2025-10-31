@@ -9,6 +9,7 @@ use Backstage\Uploadcare\Enums\Style;
 use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
@@ -26,6 +27,8 @@ class Uploadcare extends Base implements FieldContract
             'multiple' => false,
             'imagesOnly' => false,
             'withMetadata' => true,
+            'cropPreset' => '',
+            'acceptedFileTypes' => null,
         ];
     }
 
@@ -39,7 +42,12 @@ class Uploadcare extends Base implements FieldContract
         $input = $input->label($field->name ?? self::getDefaultConfig()['label'] ?? null)
             ->uploaderStyle(Style::tryFrom($field->config['uploaderStyle'] ?? null) ?? Style::tryFrom(self::getDefaultConfig()['uploaderStyle']))
             ->multiple($field->config['multiple'] ?? self::getDefaultConfig()['multiple'])
-            ->withMetadata($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata']);
+            ->withMetadata($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata'])
+            ->cropPreset($field->config['cropPreset'] ?? self::getDefaultConfig()['cropPreset']);
+
+        if ($field->config['acceptedFileTypes'] ?? self::getDefaultConfig()['acceptedFileTypes']) {
+            $input->acceptedFileTypes(explode(',', $field->config['acceptedFileTypes']));
+        }
 
         if ($field->config['imagesOnly'] ?? self::getDefaultConfig()['imagesOnly']) {
             $input->imagesOnly();
@@ -85,6 +93,21 @@ class Uploadcare extends Base implements FieldContract
                                         Style::REGULAR->value => __('Regular'),
                                     ])
                                     ->required(),
+                                TextInput::make('config.cropPreset')
+                                    ->label(__('Crop preset'))
+                                    ->placeholder(__('e.g., "free, 1:1, 16:9" or leave empty to disable'))
+                                    ->helperText(__('Comma-separated aspect ratios (e.g., "free, 1:1, 16:9, 4:3") or empty to disable cropping'))
+                                    ->columnSpanFull(),
+                                Select::make('config.acceptedFileTypes')
+                                    ->label(__('Accepted file types'))
+                                    ->options([
+                                        'image/*' => __('Image'),
+                                        'video/*' => __('Video'),
+                                        'audio/*' => __('Audio'),
+                                        'application/*' => __('Application'),
+                                    ])
+                                    ->multiple()
+                                    ->columnSpanFull(),
                             ]),
                         ]),
                 ])->columnSpanFull(),
