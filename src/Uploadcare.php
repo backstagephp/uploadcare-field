@@ -120,6 +120,10 @@ class Uploadcare extends Base implements FieldContract
             return $data;
         }
 
+        if (! property_exists($record, 'valueColumn') || ! property_exists($record, 'values')) {
+            return $data;
+        }
+
         $values = $record->values[$field->ulid];
 
         if ($values == '' || $values == [] || $values == null || empty($values)) {
