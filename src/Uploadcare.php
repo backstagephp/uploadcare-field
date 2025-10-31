@@ -2,22 +2,22 @@
 
 namespace Backstage\UploadcareField;
 
-use Filament\Actions\Action;
-use Filament\Facades\Filament;
+use Backstage\Fields\Contracts\FieldContract;
 use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
-use Backstage\UploadcareField\Forms\Components\MediaGridPicker;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
 use Backstage\Uploadcare\Enums\Style;
+use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
+use Backstage\UploadcareField\Forms\Components\MediaGridPicker;
+use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
-use Illuminate\Database\Eloquent\Model;
 use Filament\Schemas\Components\Tabs\Tab;
-use Backstage\Fields\Contracts\FieldContract;
-use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Uploadcare extends Base implements FieldContract
 {
@@ -55,19 +55,19 @@ class Uploadcare extends Base implements FieldContract
 
                     \Log::info('Action called', [
                         'selectedMediaUuid' => $selectedMediaUuid,
-                        'formData' => $formData
+                        'formData' => $formData,
                     ]);
-                    
+
                     if ($selectedMediaUuid) {
                         // Set the main form field value
                         $schema->getState()[$name] = $selectedMediaUuid;
-                        
+
                         \Log::info('Set form field value', [
                             'fieldName' => $name,
-                            'uuid' => $selectedMediaUuid
+                            'uuid' => $selectedMediaUuid,
                         ]);
                     }
-                    
+
                 })
                 ->schema([
                     MediaGridPicker::make('media_picker')
