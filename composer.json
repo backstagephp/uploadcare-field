@@ -84,10 +84,6 @@
         "fields": {
             "type": "git",
             "url": "git@github.com:backstagephp/fields.git"
-        },
-        "saade/filament-adjacency-list": {
-            "type": "git",
-            "url": "git@github.com:backstagephp/filament-adjacency-list.git"
         }
     }
 }
