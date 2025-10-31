@@ -28,6 +28,7 @@ class Uploadcare extends Base implements FieldContract
             'imagesOnly' => false,
             'withMetadata' => true,
             'cropPreset' => '',
+            'acceptedFileTypes' => null,
         ];
     }
 
@@ -43,6 +44,10 @@ class Uploadcare extends Base implements FieldContract
             ->multiple($field->config['multiple'] ?? self::getDefaultConfig()['multiple'])
             ->withMetadata($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata'])
             ->cropPreset($field->config['cropPreset'] ?? self::getDefaultConfig()['cropPreset']);
+
+        if ($field->config['acceptedFileTypes'] ?? self::getDefaultConfig()['acceptedFileTypes']) {
+            $input->acceptedFileTypes(explode(',', $field->config['acceptedFileTypes']));
+        }
 
         if ($field->config['imagesOnly'] ?? self::getDefaultConfig()['imagesOnly']) {
             $input->imagesOnly();
@@ -92,6 +97,16 @@ class Uploadcare extends Base implements FieldContract
                                     ->label(__('Crop preset'))
                                     ->placeholder(__('e.g., "free, 1:1, 16:9" or leave empty to disable'))
                                     ->helperText(__('Comma-separated aspect ratios (e.g., "free, 1:1, 16:9, 4:3") or empty to disable cropping'))
+                                    ->columnSpanFull(),
+                                Select::make('config.acceptedFileTypes')
+                                    ->label(__('Accepted file types'))
+                                    ->options([
+                                        'image/*' => __('Image'),
+                                        'video/*' => __('Video'),
+                                        'audio/*' => __('Audio'),
+                                        'application/*' => __('Application'),
+                                    ])
+                                    ->multiple()
                                     ->columnSpanFull(),
                             ]),
                         ]),
