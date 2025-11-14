@@ -7,6 +7,8 @@ use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
 use Backstage\Uploadcare\Enums\Style;
 use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
+use Backstage\UploadcareField\Forms\Components\MediaGridPicker;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -14,6 +16,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -38,6 +41,45 @@ class Uploadcare extends Base implements FieldContract
             input: Input::make($name)->withMetadata()->removeCopyright(),
             field: $field
         );
+
+        $input = $input->hintActions([
+            Action::make('mediaPicker')
+                ->hiddenLabel()
+                ->tooltip(__('Select from Media'))
+                ->icon(Heroicon::Photo)
+                ->color('gray')
+                ->size('sm')
+                ->modalHeading(__('Select Media'))
+                ->modalCancelActionLabel(__('Cancel'))
+                ->action(function (Action $action, $schema) {
+
+                    $formData = $schema->getState();
+                    $selectedMediaUuid = $formData['selected_media_uuid'] ?? null;
+
+                    \Log::info('Action called', [
+                        'selectedMediaUuid' => $selectedMediaUuid,
+                        'formData' => $formData,
+                    ]);
+
+                    if ($selectedMediaUuid) {
+                        // Set the main form field value
+                        $schema->getState()[$name] = $selectedMediaUuid;
+
+                        \Log::info('Set form field value', [
+                            'fieldName' => $name,
+                            'uuid' => $selectedMediaUuid,
+                        ]);
+                    }
+
+                })
+                ->schema([
+                    MediaGridPicker::make('media_picker')
+                        ->fieldName($name)
+                        ->perPage(12),
+                    \Filament\Forms\Components\Hidden::make('selected_media_uuid')
+                        ->default(null),
+                ]),
+        ]);
 
         $input = $input->label($field->name ?? self::getDefaultConfig()['label'] ?? null)
             ->uploaderStyle(Style::tryFrom($field->config['uploaderStyle'] ?? null) ?? Style::tryFrom(self::getDefaultConfig()['uploaderStyle']))
@@ -155,7 +197,7 @@ class Uploadcare extends Base implements FieldContract
 
     public static function mutateBeforeSaveCallback(Model $record, Field $field, array $data): array
     {
-        if (! property_exists($field, 'field_type') || $field->field_type !== 'uploadcare') {
+        if (($field->field_type ?? '') !== 'uploadcare') {
             return $data;
         }
 
