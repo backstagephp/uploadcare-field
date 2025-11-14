@@ -1,0 +1,89 @@
+{
+    "name": "backstage/uploadcare-field",
+    "description": "Uploadcare Field component for the Backstage CMS.",
+    "keywords": [
+        "Vormkracht10",
+        "laravel",
+        "backstage-uploadcare-field"
+    ],
+    "homepage": "https://github.com/backstagephp/uploadcare-field",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Baspa",
+            "email": "hello@baspa.dev",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "spatie/laravel-package-tools": "^1.16",
+        "illuminate/contracts": "^10.0||^11.0||^12.0",
+        "backstage/filament-uploadcare-field": "^1.1.0",
+        "backstage/fields": "^0.8.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.14",
+        "nunomaduro/collision": "^8.8.0",
+        "orchestra/testbench": "^9.0|^10.0",
+        "pestphp/pest": "^3.7",
+        "pestphp/pest-plugin-arch": "^3.1.0",
+        "pestphp/pest-plugin-laravel": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Backstage\\UploadcareField\\": "src/",
+            "Backstage\\UploadcareField\\Database\\Factories\\": "database/factories/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Backstage\\UploadcareField\\Tests\\": "tests/",
+            "Workbench\\App\\": "workbench/app/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": "@composer run prepare",
+        "clear": "@php vendor/bin/testbench package:purge-backstage-uploadcare-field --ansi",
+        "prepare": "@php vendor/bin/testbench package:discover --ansi",
+        "build": [
+            "@composer run prepare",
+            "@php vendor/bin/testbench workbench:build --ansi"
+        ],
+        "start": [
+            "Composer\\Config::disableProcessTimeout",
+            "@composer run build",
+            "@php vendor/bin/testbench serve"
+        ],
+        "analyse": "vendor/bin/phpstan analyse",
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Backstage\\UploadcareField\\UploadcareFieldServiceProvider"
+            ],
+            "aliases": {
+                "UploadcareField": "Backstage\\UploadcareField\\Facades\\Uploadcare"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "repositories": {
+        "fields": {
+            "type": "git",
+            "url": "git@github.com:backstagephp/fields.git"
+        }
+    }
+}
