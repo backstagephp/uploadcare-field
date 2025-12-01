@@ -45,8 +45,11 @@ class Uploadcare extends Base implements FieldContract
             ->withMetadata($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata'])
             ->cropPreset($field->config['cropPreset'] ?? self::getDefaultConfig()['cropPreset']);
 
-        if ($field->config['acceptedFileTypes'] ?? self::getDefaultConfig()['acceptedFileTypes']) {
-            $input->acceptedFileTypes(explode(',', $field->config['acceptedFileTypes']));
+        if ($acceptedFileTypes = $field->config['acceptedFileTypes'] ?? self::getDefaultConfig()['acceptedFileTypes']) {
+            if (is_string($acceptedFileTypes)) {
+                $acceptedFileTypes = explode(',', $acceptedFileTypes);
+            }
+            $input->acceptedFileTypes($acceptedFileTypes);
         }
 
         if ($field->config['imagesOnly'] ?? self::getDefaultConfig()['imagesOnly']) {
