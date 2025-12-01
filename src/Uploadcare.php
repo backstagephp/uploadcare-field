@@ -158,7 +158,7 @@ class Uploadcare extends Base implements FieldContract
 
     public static function mutateBeforeSaveCallback(Model $record, Field $field, array $data): array
     {
-        if (! property_exists($field, 'field_type') || $field->field_type !== 'uploadcare') {
+        if (($field->field_type ?? '') !== 'uploadcare') {
             return $data;
         }
 
