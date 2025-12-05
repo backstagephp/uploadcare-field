@@ -103,12 +103,32 @@ class Uploadcare extends Base implements FieldContract
                                     ->columnSpanFull(),
                                 Select::make('config.acceptedFileTypes')
                                     ->label(__('Accepted file types'))
-                                    ->options([
-                                        'image/*' => __('Image'),
-                                        'video/*' => __('Video'),
-                                        'audio/*' => __('Audio'),
-                                        'application/*' => __('Application'),
+                                    ->options(function ($state) {
+                                        $options = [
+                                            'image/*' => __('Image'),
+                                            'video/*' => __('Video'),
+                                            'audio/*' => __('Audio'),
+                                            'application/*' => __('Application'),
+                                        ];
+
+                                        if ($state) {
+                                            foreach ($state as $type) {
+                                                if (! array_key_exists($type, $options)) {
+                                                    $options[$type] = $type;
+                                                }
+                                            }
+                                        }
+
+                                        return $options;
+                                    })
+                                    ->createOptionForm([
+                                        TextInput::make('mime_type')
+                                            ->label('Mime type or extension (e.g. .jpg)')
+                                            ->required(),
                                     ])
+                                    ->createOptionUsing(function (array $data) {
+                                        return $data['mime_type'];
+                                    })
                                     ->multiple()
                                     ->columnSpanFull(),
                             ]),
