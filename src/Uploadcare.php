@@ -215,8 +215,12 @@ class Uploadcare extends Base implements FieldContract
         return $values;
     }
 
-    private static function isMediaUlidArray(array $values): bool
+    private static function isMediaUlidArray(mixed $values): bool
     {
+        if (! is_array($values)) {
+            return false;
+        }
+
         if (! isset($values[0])) {
             return false;
         }
@@ -453,8 +457,12 @@ class Uploadcare extends Base implements FieldContract
         return $info['imageInfo'] ?? $info['videoInfo'] ?? $info['contentInfo'] ?? [];
     }
 
-    private static function extractCdnUrlsFromFileData(array $files): array
+    private static function extractCdnUrlsFromFileData(mixed $files): array
     {
+        if (! is_array($files)) {
+            return [];
+        }
+
         $cdnUrls = [];
 
         foreach ($files as $file) {
