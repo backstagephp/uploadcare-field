@@ -155,23 +155,16 @@ class Uploadcare extends Base implements FieldContract
             return $data;
         }
 
-        if ($field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata']) {
-            $values = self::parseValues($values);
-
-            $data[$record->valueColumn][$field->ulid] = $values;
-
-            return $data;
-        }
-
+        $withMetadata = $field->config['withMetadata'] ?? self::getDefaultConfig()['withMetadata'];
         $values = self::parseValues($values);
 
         if (self::isMediaUlidArray($values)) {
-            $mediaUrls = self::extractMediaUrls($values);
+            $mediaData = self::extractMediaUrls($values, $withMetadata);
+            $data[$record->valueColumn][$field->ulid] = $mediaData;
         } else {
             $mediaUrls = self::extractCdnUrlsFromFileData($values);
+            $data[$record->valueColumn][$field->ulid] = $withMetadata ? $values : self::filterValidUrls($mediaUrls);
         }
-
-        $data[$record->valueColumn][$field->ulid] = self::filterValidUrls($mediaUrls);
 
         return $data;
     }
@@ -248,22 +241,31 @@ class Uploadcare extends Base implements FieldContract
         });
     }
 
-    private static function extractMediaUrls(array $mediaUlids): array
+    private static function extractMediaUrls(array $mediaUlids, bool $withMetadata = false): array
     {
         $mediaModel = self::getMediaModel();
 
         return $mediaModel::whereIn('ulid', $mediaUlids)
             ->get()
-            ->map(function ($media) {
-                if (! isset($media->metadata['cdnUrl'])) {
+            ->map(function ($media) use ($withMetadata) {
+                $metadata = is_string($media->metadata)
+                    ? json_decode($media->metadata, true)
+                    : $media->metadata;
+
+                if (! isset($metadata['cdnUrl'])) {
                     return null;
                 }
 
-                $cdnUrl = $media->metadata['cdnUrl'];
+                if ($withMetadata) {
+                    return $metadata;
+                }
+
+                $cdnUrl = $metadata['cdnUrl'];
 
                 return filter_var($cdnUrl, FILTER_VALIDATE_URL) ? $cdnUrl : null;
             })
             ->filter()
+            ->values()
             ->toArray();
     }
 
@@ -308,14 +310,18 @@ class Uploadcare extends Base implements FieldContract
         foreach ($files as $file) {
             $normalizedFiles = self::normalizeFileData($file);
 
+            if ($normalizedFiles === null || $normalizedFiles === false) {
+                continue;
+            }
+
             if (self::isArrayOfArrays($normalizedFiles)) {
                 foreach ($normalizedFiles as $singleFile) {
-                    if (! self::shouldSkipFile($singleFile)) {
+                    if ($singleFile !== null && ! self::shouldSkipFile($singleFile)) {
                         $media[] = self::createOrUpdateMediaRecord($singleFile);
                     }
                 }
             } else {
-                if (! self::shouldSkipFile($normalizedFiles)) {
+                if (is_array($normalizedFiles) && ! self::shouldSkipFile($normalizedFiles)) {
                     $media[] = self::createOrUpdateMediaRecord($normalizedFiles);
                 }
             }
@@ -344,6 +350,10 @@ class Uploadcare extends Base implements FieldContract
 
     private static function shouldSkipFile(mixed $file): bool
     {
+        if ($file === null || (! is_array($file) && ! is_string($file))) {
+            return true;
+        }
+
         if (self::isArrayOfArrays($file)) {
             foreach ($file as $singleFile) {
                 if (self::shouldSkipFile($singleFile)) {
@@ -355,13 +365,15 @@ class Uploadcare extends Base implements FieldContract
         }
 
         if (is_string($file)) {
-            return self::mediaExists($file);
+            $uuid = self::extractUuidFromString($file);
+
+            return $uuid ? self::mediaExistsByUuid($uuid) : false;
         }
 
         if (is_array($file)) {
-            $cdnUrl = self::extractCdnUrl($file);
+            $uuid = $file['uuid'] ?? $file['fileInfo']['uuid'] ?? null;
 
-            return $cdnUrl ? self::mediaExists($cdnUrl) : false;
+            return $uuid ? self::mediaExistsByUuid($uuid) : false;
         }
 
         return false;
@@ -372,6 +384,30 @@ class Uploadcare extends Base implements FieldContract
         $mediaModel = self::getMediaModel();
 
         return $mediaModel::where('checksum', md5_file($file))->exists();
+    }
+
+    private static function mediaExistsByUuid(string $uuid): bool
+    {
+        $mediaModel = self::getMediaModel();
+
+        return $mediaModel::where('filename', $uuid)->exists();
+    }
+
+    private static function extractUuidFromString(string $string): ?string
+    {
+        if (preg_match('/~\d+\//', $string)) {
+            return null;
+        }
+
+        if (preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $string)) {
+            return $string;
+        }
+
+        if (preg_match('/\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})(?:\/|$)/i', $string, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 
     private static function extractCdnUrl(array $file): ?string
@@ -397,10 +433,9 @@ class Uploadcare extends Base implements FieldContract
         return $mediaModel::updateOrCreate([
             'site_ulid' => $tenantUlid,
             'disk' => 'uploadcare',
-            'original_filename' => $info['name'],
-            'checksum' => md5_file($info['cdnUrl']),
-        ], [
             'filename' => $info['uuid'],
+        ], [
+            'original_filename' => $info['name'],
             'uploaded_by' => Auth::id(),
             'extension' => $detailedInfo['format'] ?? null,
             'mime_type' => $info['mimeType'],
@@ -409,6 +444,7 @@ class Uploadcare extends Base implements FieldContract
             'height' => $detailedInfo['height'] ?? null,
             'public' => config('media-picker.visibility') === 'public',
             'metadata' => json_encode($info),
+            'checksum' => md5($info['cdnUrl']),
         ]);
     }
 
