@@ -19,8 +19,8 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 
 class Uploadcare extends Base implements FieldContract, HydratesValues
 {
@@ -585,14 +585,14 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $mediaModel = self::getMediaModel();
 
         $media = $mediaModel::where('filename', $uuid)
-            ->orWhere('metadata->cdnUrl', 'like', '%' . $uuid . '%')
+            ->orWhere('metadata->cdnUrl', 'like', '%'.$uuid.'%')
             ->first();
 
         if ($media && isset($media->metadata['cdnUrl'])) {
             return $media->metadata['cdnUrl'];
         }
 
-        return 'https://ucarecdn.com/' . $uuid . '/';
+        return 'https://ucarecdn.com/'.$uuid.'/';
     }
 
     private static function isValidCdnUrl(string $url): bool
