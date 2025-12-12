@@ -24,7 +24,7 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
     public function packageBooted(): void
     {
         FilamentAsset::register([
-            Css::make('uploadcare-field', __DIR__ . '/../resources/dist/uploadcare-field.css'),
+            Css::make('uploadcare-field', __DIR__.'/../resources/dist/uploadcare-field.css'),
         ], 'backstage/uploadcare-field');
 
         \Illuminate\Support\Facades\Event::listen(
@@ -39,7 +39,7 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
 
     public function bootingPackage(): void
     {
-        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'backstage-uploadcare-field');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'backstage-uploadcare-field');
 
         // Register Media src resolver
         \Backstage\Media\Models\Media::resolveSrcUsing(function ($media) {
