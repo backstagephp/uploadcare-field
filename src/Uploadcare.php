@@ -20,6 +20,7 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Arr;
 
 class Uploadcare extends Base implements FieldContract, HydratesValues
 {
@@ -46,7 +47,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $isMultiple = $field->config['multiple'] ?? self::getDefaultConfig()['multiple'];
         $acceptedFileTypes = self::parseAcceptedFileTypes($field);
 
-        // TODO: Implement media picker when we got it working fully. Remember to check content_field_values and media_relations as well.
         $input = $input->hintActions([
             Action::make('mediaPicker')
                 ->hiddenLabel()
@@ -317,7 +317,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
     {
         $mediaModel = self::getMediaModel();
 
-        return $mediaModel::whereIn('ulid', $mediaUlids)
+        return $mediaModel::whereIn('ulid', array_filter(Arr::flatten($mediaUlids), 'is_string'))
             ->get()
             ->map(function ($media) use ($withMetadata) {
                 $metadata = is_string($media->metadata)
@@ -719,7 +719,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         }
 
         $mediaModel = self::getMediaModel();
-        $mediaItems = $mediaModel::whereIn('ulid', $value)->get();
+        $mediaItems = $mediaModel::whereIn('ulid', array_filter(Arr::flatten($value), 'is_string'))->get();
         $hydrated = [];
 
         foreach ($value as $ulid) {
