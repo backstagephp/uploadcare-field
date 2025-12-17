@@ -5,8 +5,6 @@ namespace Backstage\UploadcareField\Observers;
 use Backstage\Media\Models\Media;
 use Backstage\Models\ContentFieldValue;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class ContentFieldValueObserver
 {
@@ -35,19 +33,14 @@ class ContentFieldValueObserver
         $mediaData = [];
         $modifiedValue = $this->processValueRecursively($value, $mediaData);
 
-        // Even if empty($mediaData), we might have cleared a field, so we should sync (detach all)
-        // But if nothing was modified (strict check?), maybe we skip?
-        // Actually, if it's a repeater saving, we always want to ensure we catch the latest state.
-        // Let's rely on mediaData being collected.
-
         if (empty($mediaData) && $value === $modifiedValue) {
-            // If no media found and value didn't change (structure-wise substitutions), might be nothing to do.
-            // However, detached images need to be handled.
-            // If we found no media, we sync an empty array, which detaches everything.
+            // If there were previously media relations, but no media is found now (e.g. field cleared),
+            // ensure we detach stale relationships.
+            if (! $contentFieldValue->media()->exists()) {
+                return;
+            }
         }
-
-        Log::info('Syncing Media Data', ['count' => count($mediaData)]);
-
+        
         $this->syncRelationships($contentFieldValue, $mediaData, $modifiedValue);
     }
 
@@ -71,28 +64,12 @@ class ContentFieldValueObserver
      */
     private function processValueRecursively(mixed $data, array &$mediaData): mixed
     {
-        // Handle JSON strings that might contain Uploadcare data
         if (is_string($data) && (str_starts_with($data, '[') || str_starts_with($data, '{'))) {
             $decoded = json_decode($data, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                // Determine if this decoded data is an Uploadcare value
                 if ($this->isUploadcareValue($decoded)) {
-                    // It is! Process it as such.
-                    // We recurse on the DECODED value, which falls into the array handling below.
-                    // But wait, the array handling below expects to traverse keys if it's not a value?
-                    // No, let's just pass $decoded to a recursive call?
-                    // Or just handle it right here to avoid logic duplication.
-
-                    // Actually, if it is an Uploadcare value, we want to run the extraction logic.
-                    // The extraction logic is inside current function's "isUploadcareValue" block.
-                    // So let's normalize $data to $decoded and proceed.
                     $data = $decoded;
                 } else {
-                    // It's a JSON string but NOT an Uploadcare value (maybe a nested repeater encoded as string?).
-                    // We should probably traverse it too?
-                    // Only if we want to fix ALL nested JSON strings.
-                    // The user asked about "repeaters and builders".
-                    // If a repeater inside a repeater is stored as a string, we should decode it to find the deeper files.
                     $data = $decoded;
                 }
             }
@@ -139,8 +116,7 @@ class ContentFieldValueObserver
 
         // Check first item to see if it looks like an Uploadcare file structure
         if (empty($data)) {
-            // Empty array could be an empty file list or empty repeater.
-            // Ambiguous. But safe to return false and just return empty array.
+
             return false;
         }
 
@@ -151,7 +127,13 @@ class ContentFieldValueObserver
             return true;
         }
 
-        // It might be a list of mixed things? Unlikely for a strictly typed field.
+        if (is_string($first)) {
+            // UUID strings or URLs containing UUIDs
+            if (preg_match('/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i', $first)) {
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -161,13 +143,16 @@ class ContentFieldValueObserver
         $meta = [];
 
         if (is_string($item)) {
-            if (filter_var($item, FILTER_VALIDATE_URL) && str_contains($item, 'ucarecdn.com')) {
-                preg_match('/ucarecdn\.com\/([a-f0-9-]{36})(\/.*)?/i', $item, $matches);
-                $uuid = $matches[1] ?? null;
+            if (filter_var($item, FILTER_VALIDATE_URL)) {
+                preg_match('/([a-f0-9-]{36})/i', $item, $matches, PREG_OFFSET_CAPTURE);
+                $uuid = $matches[1][0] ?? null;
                 if ($uuid) {
+                    $uuidOffset = $matches[1][1] ?? null;
+                    $uuidLen = strlen($uuid);
+                    $modifiers = ($uuidOffset !== null) ? substr($item, $uuidOffset + $uuidLen) : '';
                     $meta = [
                         'cdnUrl' => $item,
-                        'cdnUrlModifiers' => $matches[2] ?? '',
+                        'cdnUrlModifiers' => $modifiers,
                         'uuid' => $uuid,
                     ];
                 } else {
@@ -181,11 +166,17 @@ class ContentFieldValueObserver
             $meta = $item;
 
             // Try to extract modifiers from cdnUrl if not explicitly present or if we want to be sure
-            if (isset($item['cdnUrl']) && is_string($item['cdnUrl']) && str_contains($item['cdnUrl'], 'ucarecdn.com')) {
-                preg_match('/ucarecdn\.com\/([a-f0-9-]{36})(\/.*)?/i', $item['cdnUrl'], $matches);
-                if (isset($matches[2]) && ! empty($matches[2])) {
-                    $meta['cdnUrlModifiers'] = $matches[2];
-                    $meta['cdnUrl'] = $item['cdnUrl']; // Ensure url matches
+            if (isset($item['cdnUrl']) && is_string($item['cdnUrl']) && filter_var($item['cdnUrl'], FILTER_VALIDATE_URL)) {
+                preg_match('/([a-f0-9-]{36})/i', $item['cdnUrl'], $matches, PREG_OFFSET_CAPTURE);
+                $foundUuid = $matches[1][0] ?? null;
+                if ($foundUuid) {
+                    $uuidOffset = $matches[1][1] ?? null;
+                    $uuidLen = strlen($foundUuid);
+                    $modifiers = ($uuidOffset !== null) ? substr($item['cdnUrl'], $uuidOffset + $uuidLen) : '';
+                    if (! empty($modifiers)) {
+                        $meta['cdnUrlModifiers'] = $modifiers;
+                        $meta['cdnUrl'] = $item['cdnUrl']; // Ensure url matches
+                    }
                 }
             }
         }
@@ -196,14 +187,12 @@ class ContentFieldValueObserver
     private function resolveMediaUlid(string $uuid): ?string
     {
         if (strlen($uuid) === 26) {
-            return $uuid; // Already a ULID?
-        }
+            // Only treat 26-char strings as Media ULIDs if they exist.
+            // Builder/repeater data can contain Content ULIDs as well; those must NOT be attached as media.
+            $mediaModel = config('backstage.media.model', Media::class);
+            $media = $mediaModel::where('ulid', $uuid)->first();
 
-        // Check if it looks like a version 4 UUID (Uploadcare usually uses these)
-        if (! Str::isUuid($uuid)) {
-            // If strictly not a UUID, and not a ULID (checked via length/format), what is it?
-            // Maybe it's a filename that is just a string?
-            // Let's just try to find it.
+            return $media?->ulid;
         }
 
         $mediaModel = config('backstage.media.model', Media::class);
@@ -224,20 +213,6 @@ class ContentFieldValueObserver
                 ]);
             }
 
-            // Important: We must save the modified value (with ULIDs) back to the field
-            // But we must NOT double encode.
-            // ContentFieldValue uses implicit casting or just stores string?
-            // The model is "DecodesJsonStrings", but for saving we generally pass array if we want it cast,
-            // or we manually json_encode if the model doesn't cast it automatically on set.
-            // ContentFieldValue definition:
-            // protected $guarded = [];
-            // no specific casts defined for 'value' in the snippet viewed earlier (returns empty array).
-            // But it has `use DecodesJsonStrings`.
-
-            // In the original code:
-            // $contentFieldValue->updateQuietly(['value' => json_encode($ulids)]);
-
-            // So we should json_encode the result.
             $contentFieldValue->updateQuietly(['value' => json_encode($modifiedValue)]);
         });
     }

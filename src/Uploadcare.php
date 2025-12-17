@@ -40,15 +40,37 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
     public static function make(string $name, Field $field): Input
     {
         $input = self::applyDefaultSettings(
-            input: Input::make($name)->withMetadata()->removeCopyright(),
+            input: Input::make($name)
+                ->withMetadata()
+                ->removeCopyright()
+                ->dehydrateStateUsing(function ($state) use ($name, $field) {
+                    if (is_string($state) && json_validate($state)) {
+                        return json_decode($state, true);
+                    }
+
+                    return $state;
+                })
+                ->afterStateHydrated(function ($component, $state) use ($name, $field) {
+                    $newState = $state;
+
+                    if (is_string($state) && json_validate($state)) {
+                        $newState = json_decode($state, true);
+                    }
+
+                    if ($newState !== $state) {
+                         $component->state($newState);
+                    }
+                }),
             field: $field
         );
+
 
         $isMultiple = $field->config['multiple'] ?? self::getDefaultConfig()['multiple'];
         $acceptedFileTypes = self::parseAcceptedFileTypes($field);
 
         $input = $input->hintActions([
-            Action::make('mediaPicker')
+            fn (Input $component) => Action::make('mediaPicker')
+                ->schemaComponent($component)
                 ->hiddenLabel()
                 ->tooltip(__('Select from Media'))
                 ->icon(Heroicon::Photo)
@@ -58,16 +80,18 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                 ->modalWidth('Screen')
                 ->modalCancelActionLabel(__('Cancel'))
                 ->modalSubmitActionLabel(__('Select'))
-                ->action(function (Action $action, array $data, $livewire) use ($input) {
-                    $selectedMediaUuid = $data['selected_media_uuid'] ?? null;
-
-                    if ($selectedMediaUuid) {
-                        $cdnUrls = self::convertUuidsToCdnUrls($selectedMediaUuid);
-
-                        if ($cdnUrls) {
-                            self::updateStateWithSelectedMedia($input, $cdnUrls);
-                        }
+                ->action(function (Action $action, array $data, Input $component) {
+                    $selected = $data['selected_media_uuid'] ?? null;
+                    if (! $selected) {
+                        return;
                     }
+
+                    $cdnUrls = self::convertUuidsToCdnUrls($selected);
+                    if (! $cdnUrls) {
+                        return;
+                    }
+
+                    self::updateStateWithSelectedMedia($component, $cdnUrls);
                 })
                 ->schema([
                     MediaGridPicker::make('media_picker')
@@ -224,7 +248,9 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $values = self::parseValues($values);
 
         if (self::isMediaUlidArray($values)) {
-            $mediaData = self::extractMediaUrls($values, $withMetadata);
+            // Always return metadata for ULID-based values (default behavior), otherwise
+            // the Uploadcare field may not be able to render a preview.
+            $mediaData = self::extractMediaUrls($values, true);
             $data[$record->valueColumn][$field->ulid] = $mediaData;
         } else {
             $mediaUrls = self::extractCdnUrlsFromFileData($values);
@@ -324,17 +350,42 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                     ? json_decode($media->metadata, true)
                     : $media->metadata;
 
-                if (! isset($metadata['cdnUrl'])) {
+                $metadata = is_array($metadata) ? $metadata : [];
+
+                // Prefer per-edit pivot meta when available (e.g. cropped/modified cdnUrl).
+                // In Backstage this is exposed as $media->edit (see Backstage\Models\Media).
+                $editMeta = $media->edit ?? null;
+                if (is_string($editMeta)) {
+                    $editMeta = json_decode($editMeta, true);
+                }
+                if (is_array($editMeta)) {
+                    $metadata = array_merge($metadata, $editMeta);
+                }
+
+                $cdnUrl = $metadata['cdnUrl']
+                    ?? ($metadata['fileInfo']['cdnUrl'] ?? null);
+
+                $uuid = $metadata['uuid']
+                    ?? ($metadata['fileInfo']['uuid'] ?? null)
+                    ?? (is_string($media->filename) ? self::extractUuidFromString($media->filename) : null);
+
+                // Fallback for older records: construct a default Uploadcare URL if we only have a UUID.
+                if (! $cdnUrl && $uuid) {
+                    $cdnUrl = 'https://ucarecdn.com/' . $uuid . '/';
+                }
+
+                if (! $cdnUrl || ! filter_var($cdnUrl, FILTER_VALIDATE_URL)) {
                     return null;
                 }
 
                 if ($withMetadata) {
-                    return $metadata;
+                    return array_merge($metadata, array_filter([
+                        'uuid' => $uuid,
+                        'cdnUrl' => $cdnUrl,
+                    ]));
                 }
 
-                $cdnUrl = $metadata['cdnUrl'];
-
-                return filter_var($cdnUrl, FILTER_VALIDATE_URL) ? $cdnUrl : null;
+                return $cdnUrl;
             })
             ->filter()
             ->values()
@@ -460,15 +511,11 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
     private static function extractUuidFromString(string $string): ?string
     {
-        if (preg_match('/~\d+\//', $string)) {
-            return null;
-        }
-
         if (preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $string)) {
             return $string;
         }
 
-        if (preg_match('/\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})(?:\/|$)/i', $string, $matches)) {
+        if (preg_match('/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i', $string, $matches)) {
             return $matches[1];
         }
 
@@ -578,7 +625,37 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             return $uuid;
         }
 
-        if (str_contains($uuid, 'ucarecdn.com')) {
+        // If this is a Media ULID, resolve to stored CDN URL (or derive from filename UUID).
+        if (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $uuid)) {
+            $mediaModel = self::getMediaModel();
+            $media = $mediaModel::where('ulid', $uuid)->first();
+            if (! $media) {
+                return null;
+            }
+
+            $metadata = is_string($media->metadata) ? json_decode($media->metadata, true) : $media->metadata;
+            $metadata = is_array($metadata) ? $metadata : [];
+
+            // Prefer edit/pivot meta if exposed
+            $editMeta = $media->edit ?? null;
+            if (is_string($editMeta)) {
+                $editMeta = json_decode($editMeta, true);
+            }
+            if (is_array($editMeta)) {
+                $metadata = array_merge($metadata, $editMeta);
+            }
+
+            $cdnUrl = $metadata['cdnUrl'] ?? ($metadata['fileInfo']['cdnUrl'] ?? null);
+            $fileUuid = $metadata['uuid'] ?? ($metadata['fileInfo']['uuid'] ?? null) ?? self::extractUuidFromString((string) ($media->filename ?? ''));
+
+            if (! $cdnUrl && $fileUuid) {
+                $cdnUrl = 'https://ucarecdn.com/' . $fileUuid . '/';
+            }
+
+            return is_string($cdnUrl) && filter_var($cdnUrl, FILTER_VALIDATE_URL) ? $cdnUrl : null;
+        }
+
+        if (str_contains($uuid, 'ucarecdn.com') || str_contains($uuid, 'ucarecd.net')) {
             return $uuid;
         }
 
@@ -597,7 +674,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
     private static function isValidCdnUrl(string $url): bool
     {
-        return filter_var($url, FILTER_VALIDATE_URL) && str_contains($url, 'ucarecdn.com');
+        return filter_var($url, FILTER_VALIDATE_URL) && self::extractUuidFromString($url) !== null;
     }
 
     private static function updateStateWithSelectedMedia(Input $input, mixed $urls): void
@@ -674,6 +751,14 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
         $mediaModel = self::getMediaModel();
 
+        if (is_string($value) && json_validate($value)) {
+            $decoded = json_decode($value, true);
+
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
         if (is_string($value) && ! json_validate($value)) {
             return $mediaModel::where('ulid', $value)->first() ?? $value;
         }
@@ -710,25 +795,121 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         })->toArray();
     }
 
-    private static function hydrateBackstageUlids(mixed $value): ?array
+    private static function resolveMediaFromMixedValue(mixed $item): ?Model
     {
-        $isListOfUlids = is_array($value) && ! empty($value) && is_string($value[0]) && ! json_validate($value[0]);
+        $mediaModel = self::getMediaModel();
 
-        if (! $isListOfUlids) {
-            return null;
+        if ($item instanceof Model) {
+            return $item;
         }
 
-        $mediaModel = self::getMediaModel();
-        $mediaItems = $mediaModel::whereIn('ulid', array_filter(Arr::flatten($value), 'is_string'))->get();
-        $hydrated = [];
+        if (is_string($item) && $item !== '') {
+            if (filter_var($item, FILTER_VALIDATE_URL)) {
+                $uuid = self::extractUuidFromString($item);
 
-        foreach ($value as $ulid) {
-            $media = $mediaItems->firstWhere('ulid', $ulid);
-            if ($media) {
-                $hydrated[] = $media->load('edits');
+                return $uuid ? $mediaModel::where('filename', $uuid)->first() : null;
+            }
+
+            if (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $item)) {
+                return $mediaModel::where('ulid', $item)->first();
+            }
+
+            $uuid = self::extractUuidFromString($item);
+
+            return $uuid ? $mediaModel::where('filename', $uuid)->first() : null;
+        }
+
+        if (is_array($item)) {
+            $ulid = $item['ulid'] ?? $item['id'] ?? $item['media_ulid'] ?? null;
+            if (is_string($ulid) && $ulid !== '') {
+                $media = $mediaModel::where('ulid', $ulid)->first();
+                if ($media) {
+                    return $media;
+                }
+            }
+
+            $uuid = $item['uuid'] ?? ($item['fileInfo']['uuid'] ?? null);
+            if (is_string($uuid) && $uuid !== '') {
+                $media = $mediaModel::where('filename', $uuid)->first();
+                if ($media) {
+                    return $media;
+                }
+
+                if (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $uuid)) {
+                    return $mediaModel::where('ulid', $uuid)->first();
+                }
+            }
+
+            $cdnUrl = $item['cdnUrl'] ?? ($item['fileInfo']['cdnUrl'] ?? null) ?? null;
+            if (is_string($cdnUrl) && filter_var($cdnUrl, FILTER_VALIDATE_URL)) {
+                $uuid = self::extractUuidFromString($cdnUrl);
+
+                return $uuid ? $mediaModel::where('filename', $uuid)->first() : null;
             }
         }
 
+        return null;
+    }
+
+    private static function hydrateBackstageUlids(mixed $value): ?array
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        // Common cases:
+        // - list of Media ULIDs (strings)
+        // - list of Uploadcare UUIDs / CDN URLs (strings)
+        // - list of Uploadcare file arrays (arrays with uuid / fileInfo.uuid)
+        if (array_is_list($value)) {
+            $hydrated = [];
+            foreach ($value as $item) {
+                $media = self::resolveMediaFromMixedValue($item);
+                if ($media) {
+                    $hydrated[] = $media->load('edits');
+                }
+            }
+
+            return ! empty($hydrated) ? $hydrated : null;
+        }
+
+        $mediaModel = self::getMediaModel();
+        
+        // Find all strings that look like ULIDs
+        $potentialUlids = array_filter(Arr::flatten($value), function ($item) {
+            return is_string($item) && ! json_validate($item);
+        });
+
+        if (empty($potentialUlids)) {
+            return null;
+        }
+
+        $mediaItems = $mediaModel::whereIn('ulid', $potentialUlids)->get();
+        
+        $resolve = function ($item) use ($mediaItems, &$resolve) {
+            if (is_array($item)) {
+                return array_map($resolve, $item);
+            }
+
+            if (is_string($item) && ! json_validate($item)) {
+                // Try to find media
+                $media = $mediaItems->firstWhere('ulid', $item);
+                if ($media) {
+                     return $media->load('edits');
+                }
+
+                return null;
+            }
+            
+            return $item;
+        };
+
+        $hydrated = array_map($resolve, $value);
+        
+        // Filter out nulls from the top level (invalid ULIDs)
+        $hydrated = array_values(array_filter($hydrated));
+
         return ! empty($hydrated) ? $hydrated : null;
     }
+
 }

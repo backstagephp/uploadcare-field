@@ -99,16 +99,8 @@ class MediaGridPicker extends Component
     public function selectMedia(array $media): void
     {
         $mediaId = $media['id'];
-
-        // Extract UUID from CDN URL
-        $cdnUrl = $media['cdn_url'] ?? null;
-        $uuid = $cdnUrl;
-
-        if ($cdnUrl && str_contains($cdnUrl, 'ucarecdn.com/')) {
-            if (preg_match('/ucarecdn\.com\/([^\/\?]+)/', $cdnUrl, $matches)) {
-                $uuid = $matches[1];
-            }
-        }
+        // Send Media ULIDs; Uploadcare::convertUuidsToCdnUrls() will resolve them to the correct URL/UUID.
+        $selected = $mediaId;
 
         if ($this->multiple) {
             // Toggle selection in arrays
@@ -122,7 +114,7 @@ class MediaGridPicker extends Component
             } else {
                 // Add to selection
                 $this->selectedMediaIds[] = $mediaId;
-                $this->selectedMediaUuids[] = $uuid;
+                $this->selectedMediaUuids[] = $selected;
             }
 
             // Dispatch event to update hidden field in modal with array
@@ -134,13 +126,13 @@ class MediaGridPicker extends Component
         } else {
             // Single selection mode
             $this->selectedMediaId = $mediaId;
-            $this->selectedMediaUuid = $uuid;
+            $this->selectedMediaUuid = $selected;
 
             // Dispatch event to update hidden field in modal
             $this->dispatch(
                 'set-hidden-field',
                 fieldName: 'selected_media_uuid',
-                value: $uuid
+                value: $selected
             );
         }
     }

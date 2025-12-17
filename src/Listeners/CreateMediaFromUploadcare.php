@@ -44,7 +44,7 @@ class CreateMediaFromUploadcare
     private function normalizeUploadcareFile(mixed $file): ?array
     {
         if (is_string($file)) {
-            if (filter_var($file, FILTER_VALIDATE_URL) && str_contains($file, 'ucarecdn.com')) {
+            if (filter_var($file, FILTER_VALIDATE_URL) && $this->extractUuidFromUrl($file)) {
                 return ['cdnUrl' => $file, 'name' => basename(parse_url($file, PHP_URL_PATH))];
             }
 
@@ -64,7 +64,7 @@ class CreateMediaFromUploadcare
         $info = $file['fileInfo'] ?? $file;
         $cdnUrl = $info['cdnUrl'] ?? null;
 
-        if (! $cdnUrl || (! str_contains($cdnUrl, 'ucarecdn.com') && ! str_contains($cdnUrl, 'ucarecd.net'))) {
+        if (! $cdnUrl || ! filter_var($cdnUrl, FILTER_VALIDATE_URL) || ! $this->extractUuidFromUrl($cdnUrl)) {
             return null;
         }
 

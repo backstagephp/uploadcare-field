@@ -16,6 +16,7 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
             ->hasMigrations([
                 '2025_08_08_000000_fix_uploadcare_double_encoded_json',
                 '2025_12_08_163311_normalize_uploadcare_values_to_ulids',
+                '2025_12_17_000001_repair_uploadcare_media_relationships',
             ])
             ->hasAssets()
             ->hasViews();
