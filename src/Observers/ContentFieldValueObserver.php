@@ -40,7 +40,7 @@ class ContentFieldValueObserver
                 return;
             }
         }
-
+        
         $this->syncRelationships($contentFieldValue, $mediaData, $modifiedValue);
     }
 
