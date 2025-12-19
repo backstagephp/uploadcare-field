@@ -271,6 +271,7 @@ return new class extends Migration
                         $position++;
                         $ensureRelationship($rowUlid, $media->ulid, $position, $meta);
                         $newUlids[] = $media->ulid;
+
                         continue;
                     }
 
@@ -345,5 +346,3 @@ return new class extends Migration
         //
     }
 };
-
-

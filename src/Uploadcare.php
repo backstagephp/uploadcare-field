@@ -43,14 +43,14 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             input: Input::make($name)
                 ->withMetadata()
                 ->removeCopyright()
-                ->dehydrateStateUsing(function ($state) use ($name, $field) {
+                ->dehydrateStateUsing(function ($state) {
                     if (is_string($state) && json_validate($state)) {
                         return json_decode($state, true);
                     }
 
                     return $state;
                 })
-                ->afterStateHydrated(function ($component, $state) use ($name, $field) {
+                ->afterStateHydrated(function ($component, $state) {
                     $newState = $state;
 
                     if (is_string($state) && json_validate($state)) {
@@ -58,12 +58,11 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                     }
 
                     if ($newState !== $state) {
-                         $component->state($newState);
+                        $component->state($newState);
                     }
                 }),
             field: $field
         );
-
 
         $isMultiple = $field->config['multiple'] ?? self::getDefaultConfig()['multiple'];
         $acceptedFileTypes = self::parseAcceptedFileTypes($field);
@@ -371,7 +370,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
                 // Fallback for older records: construct a default Uploadcare URL if we only have a UUID.
                 if (! $cdnUrl && $uuid) {
-                    $cdnUrl = 'https://ucarecdn.com/' . $uuid . '/';
+                    $cdnUrl = 'https://ucarecdn.com/'.$uuid.'/';
                 }
 
                 if (! $cdnUrl || ! filter_var($cdnUrl, FILTER_VALIDATE_URL)) {
@@ -649,7 +648,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             $fileUuid = $metadata['uuid'] ?? ($metadata['fileInfo']['uuid'] ?? null) ?? self::extractUuidFromString((string) ($media->filename ?? ''));
 
             if (! $cdnUrl && $fileUuid) {
-                $cdnUrl = 'https://ucarecdn.com/' . $fileUuid . '/';
+                $cdnUrl = 'https://ucarecdn.com/'.$fileUuid.'/';
             }
 
             return is_string($cdnUrl) && filter_var($cdnUrl, FILTER_VALIDATE_URL) ? $cdnUrl : null;
@@ -662,14 +661,14 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $mediaModel = self::getMediaModel();
 
         $media = $mediaModel::where('filename', $uuid)
-            ->orWhere('metadata->cdnUrl', 'like', '%' . $uuid . '%')
+            ->orWhere('metadata->cdnUrl', 'like', '%'.$uuid.'%')
             ->first();
 
         if ($media && isset($media->metadata['cdnUrl'])) {
             return $media->metadata['cdnUrl'];
         }
 
-        return 'https://ucarecdn.com/' . $uuid . '/';
+        return 'https://ucarecdn.com/'.$uuid.'/';
     }
 
     private static function isValidCdnUrl(string $url): bool
@@ -874,7 +873,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         }
 
         $mediaModel = self::getMediaModel();
-        
+
         // Find all strings that look like ULIDs
         $potentialUlids = array_filter(Arr::flatten($value), function ($item) {
             return is_string($item) && ! json_validate($item);
@@ -885,7 +884,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         }
 
         $mediaItems = $mediaModel::whereIn('ulid', $potentialUlids)->get();
-        
+
         $resolve = function ($item) use ($mediaItems, &$resolve) {
             if (is_array($item)) {
                 return array_map($resolve, $item);
@@ -895,21 +894,20 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                 // Try to find media
                 $media = $mediaItems->firstWhere('ulid', $item);
                 if ($media) {
-                     return $media->load('edits');
+                    return $media->load('edits');
                 }
 
                 return null;
             }
-            
+
             return $item;
         };
 
         $hydrated = array_map($resolve, $value);
-        
+
         // Filter out nulls from the top level (invalid ULIDs)
         $hydrated = array_values(array_filter($hydrated));
 
         return ! empty($hydrated) ? $hydrated : null;
     }
-
 }
