@@ -765,6 +765,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             // Check if it's a ULID
             if (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $value)) {
                 $media = $mediaModel::where('ulid', $value)->first();
+
                 return $media ? [$media] : $value;
             }
 
@@ -892,8 +893,8 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
                 return $mediaItem;
             })
-            ->filter() // Remove any null items
-            ->values();
+                ->filter() // Remove any null items
+                ->values();
         } catch (\Throwable $e) {
             return null;
         }
