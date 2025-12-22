@@ -150,6 +150,9 @@ class ContentFieldValueObserver
                     $uuidOffset = $matches[1][1] ?? null;
                     $uuidLen = strlen($uuid);
                     $modifiers = ($uuidOffset !== null) ? substr($item, $uuidOffset + $uuidLen) : '';
+                    if (! empty($modifiers) && $modifiers[0] === '/') {
+                        $modifiers = substr($modifiers, 1);
+                    }
                     $meta = [
                         'cdnUrl' => $item,
                         'cdnUrlModifiers' => $modifiers,
@@ -173,8 +176,12 @@ class ContentFieldValueObserver
                     $uuidOffset = $matches[1][1] ?? null;
                     $uuidLen = strlen($foundUuid);
                     $modifiers = ($uuidOffset !== null) ? substr($item['cdnUrl'], $uuidOffset + $uuidLen) : '';
+
+                    if (! empty($modifiers) && $modifiers[0] === '/') {
+                        $modifiers = substr($modifiers, 1);
+                    }
                     if (! empty($modifiers)) {
-                        $meta['cdnUrlModifiers'] = $modifiers;
+                        $meta['cdnUrlModifiers'] = $meta['cdnUrlModifiers'] ?? $modifiers;
                         $meta['cdnUrl'] = $item['cdnUrl']; // Ensure url matches
                     }
                 }
