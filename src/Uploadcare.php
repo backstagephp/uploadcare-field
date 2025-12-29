@@ -71,14 +71,14 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             fn (Input $component) => Action::make('mediaPicker')
                 ->schemaComponent($component)
                 ->hiddenLabel()
-                ->tooltip(__('Select from Media'))
+                ->tooltip((string) __('Select from Media'))
                 ->icon(Heroicon::Photo)
                 ->color('gray')
                 ->size('sm')
-                ->modalHeading(__('Select Media'))
+                ->modalHeading((string) __('Select Media'))
                 ->modalWidth('Screen')
-                ->modalCancelActionLabel(__('Cancel'))
-                ->modalSubmitActionLabel(__('Select'))
+                ->modalCancelActionLabel((string) __('Cancel'))
+                ->modalSubmitActionLabel((string) __('Select'))
                 ->action(function (Action $action, array $data, Input $component) {
                     $selected = $data['selected_media_uuid'] ?? null;
                     if (! $selected) {
