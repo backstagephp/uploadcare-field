@@ -14,7 +14,9 @@ class ContentFieldValueObserver
             return;
         }
 
+        \Log::info('[Uploadcare Debug] Observer saved called for field ULID: ' . $contentFieldValue->field_ulid);
         $value = $contentFieldValue->getAttribute('value');
+        \Log::info('[Uploadcare Debug] Observer value:', ['value' => $value]);
 
         // Normalize initial value: it could be a raw JSON string or already an array/object
         if (is_string($value)) {
@@ -32,14 +34,6 @@ class ContentFieldValueObserver
 
         $mediaData = [];
         $modifiedValue = $this->processValueRecursively($value, $mediaData);
-
-        if (empty($mediaData) && $value === $modifiedValue) {
-            // If there were previously media relations, but no media is found now (e.g. field cleared),
-            // ensure we detach stale relationships.
-            if (! $contentFieldValue->media()->exists()) {
-                return;
-            }
-        }
 
         $this->syncRelationships($contentFieldValue, $mediaData, $modifiedValue);
     }
@@ -211,13 +205,17 @@ class ContentFieldValueObserver
     private function syncRelationships(ContentFieldValue $contentFieldValue, array $mediaData, mixed $modifiedValue): void
     {
         DB::transaction(function () use ($contentFieldValue, $mediaData, $modifiedValue) {
+            \Log::info('[Uploadcare Debug] Detaching relationships for ContentFieldValue: ' . $contentFieldValue->ulid);
             $contentFieldValue->media()->detach();
 
-            foreach ($mediaData as $data) {
-                $contentFieldValue->media()->attach($data['media_ulid'], [
-                    'position' => $data['position'],
-                    'meta' => $data['meta'],
-                ]);
+            if (! empty($mediaData)) {
+                \Log::info('[Uploadcare Debug] Attaching media items:', ['count' => count($mediaData)]);
+                foreach ($mediaData as $data) {
+                    $contentFieldValue->media()->attach($data['media_ulid'], [
+                        'position' => $data['position'],
+                        'meta' => $data['meta'],
+                    ]);
+                }
             }
 
             $contentFieldValue->updateQuietly(['value' => json_encode($modifiedValue)]);
