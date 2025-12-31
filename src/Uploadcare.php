@@ -444,12 +444,12 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
             if (self::isArrayOfArrays($normalizedFiles)) {
                 foreach ($normalizedFiles as $singleFile) {
-                    if ($singleFile !== null && ! self::shouldSkipFile($singleFile)) {
+                    if ($singleFile !== null) {
                         $media[] = self::createOrUpdateMediaRecord($singleFile);
                     }
                 }
             } else {
-                if (is_array($normalizedFiles) && ! self::shouldSkipFile($normalizedFiles)) {
+                if (is_array($normalizedFiles)) {
                     $media[] = self::createOrUpdateMediaRecord($normalizedFiles);
                 }
             }
@@ -474,37 +474,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         }
 
         return $file;
-    }
-
-    private static function shouldSkipFile(mixed $file): bool
-    {
-        if ($file === null || (! is_array($file) && ! is_string($file))) {
-            return true;
-        }
-
-        if (self::isArrayOfArrays($file)) {
-            foreach ($file as $index => $singleFile) {
-                if (self::shouldSkipFile($singleFile)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        if (is_string($file)) {
-            $uuid = self::extractUuidFromString($file);
-
-            return $uuid ? self::mediaExistsByUuid($uuid) : false;
-        }
-
-        if (is_array($file)) {
-            $uuid = $file['uuid'] ?? $file['fileInfo']['uuid'] ?? null;
-
-            return $uuid ? self::mediaExistsByUuid($uuid) : false;
-        }
-
-        return false;
     }
 
     private static function mediaExistsByUuid(string $uuid): bool
