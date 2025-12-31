@@ -53,7 +53,13 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                 ->afterStateHydrated(function ($component, $state) {
                     $newState = $state;
 
-                    if (is_string($state) && json_validate($state)) {
+                    if ($state instanceof \Illuminate\Support\Collection) {
+                        $newState = $state->map(fn ($item) => $item instanceof Model ? self::mapMediaToValue($item) : $item)->all();
+                    } elseif (is_array($state) && isset($state[0]) && $state[0] instanceof Model) {
+                        $newState = array_map(fn ($item) => self::mapMediaToValue($item), $state);
+                    } elseif ($state instanceof Model) {
+                        $newState = self::mapMediaToValue($state);
+                    } elseif (is_string($state) && json_validate($state)) {
                         $newState = json_decode($state, true);
                     }
 
@@ -755,7 +761,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $hydratedFromModel = self::hydrateFromModel($model, $value);
 
         if ($hydratedFromModel !== null && $hydratedFromModel->isNotEmpty()) {
-            // Always return an array of Media instances for consistency
             return $hydratedFromModel->all();
         }
 
@@ -787,7 +792,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                             }
                         }
 
-                        // Attach the CDN URL as edit metadata
                         $media->setAttribute('edit', [
                             'uuid' => $uuid,
                             'cdnUrl' => $value,
@@ -808,6 +812,17 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         }
 
         return $value;
+    }
+
+    private static function mapMediaToValue(Model $media): array
+    {
+        $data = $media->edit ?? $media->metadata;
+
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+        }
+
+        return is_array($data) ? $data : [];
     }
 
     private static function hydrateFromModel(?Model $model, mixed $value = null): ?\Illuminate\Support\Collection
