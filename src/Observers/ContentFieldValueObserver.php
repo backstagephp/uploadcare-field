@@ -33,14 +33,6 @@ class ContentFieldValueObserver
         $mediaData = [];
         $modifiedValue = $this->processValueRecursively($value, $mediaData);
 
-        if (empty($mediaData) && $value === $modifiedValue) {
-            // If there were previously media relations, but no media is found now (e.g. field cleared),
-            // ensure we detach stale relationships.
-            if (! $contentFieldValue->media()->exists()) {
-                return;
-            }
-        }
-
         $this->syncRelationships($contentFieldValue, $mediaData, $modifiedValue);
     }
 
@@ -213,11 +205,13 @@ class ContentFieldValueObserver
         DB::transaction(function () use ($contentFieldValue, $mediaData, $modifiedValue) {
             $contentFieldValue->media()->detach();
 
-            foreach ($mediaData as $data) {
-                $contentFieldValue->media()->attach($data['media_ulid'], [
-                    'position' => $data['position'],
-                    'meta' => $data['meta'],
-                ]);
+            if (! empty($mediaData)) {
+                foreach ($mediaData as $data) {
+                    $contentFieldValue->media()->attach($data['media_ulid'], [
+                        'position' => $data['position'],
+                        'meta' => $data['meta'],
+                    ]);
+                }
             }
 
             $contentFieldValue->updateQuietly(['value' => json_encode($modifiedValue)]);
