@@ -275,7 +275,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             return $data;
         }
 
-        $values = self::findFieldValues($data[$record->valueColumn] ?? [], (string) $field->ulid);
+        $values = self::findFieldValues($data[$record->valueColumn] ?? [], $field);
 
         if ($values === '' || $values === [] || $values === null) {
             $data[$record->valueColumn][$field->ulid] = null;
@@ -397,15 +397,19 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             ->toArray();
     }
 
-    private static function findFieldValues(array $data, string $fieldUlid): mixed
+    private static function findFieldValues(array $data, Field $field): mixed
     {
-        $findInNested = function ($array, $key) use (&$findInNested) {
+        $fieldUlid = (string) $field->ulid;
+        $fieldSlug = (string) $field->slug;
+        
+
+        $findInNested = function ($array, $ulid, $slug) use (&$findInNested) {
             foreach ($array as $k => $value) {
-                if ($k === $key) {
+                if ($k === $ulid || $k === $slug) {
                     return $value;
                 }
                 if (is_array($value)) {
-                    $result = $findInNested($value, $key);
+                    $result = $findInNested($value, $ulid, $slug);
                     if ($result !== null) {
                         return $result;
                     }
@@ -415,7 +419,10 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             return null;
         };
 
-        return $findInNested($data, $fieldUlid);
+        $result = $findInNested($data, $fieldUlid, $fieldSlug);
+        
+        
+        return $result;
     }
 
     private static function normalizeValues(mixed $values): mixed
