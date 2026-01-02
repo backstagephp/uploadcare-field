@@ -388,6 +388,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                         'uuid' => $uuid,
                         'cdnUrl' => $cdnUrl,
                     ]));
+
                     return $result;
                 }
 
@@ -402,7 +403,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
     {
         $fieldUlid = (string) $field->ulid;
         $fieldSlug = (string) $field->slug;
-        
 
         $findInNested = function ($array, $ulid, $slug) use (&$findInNested) {
             foreach ($array as $k => $value) {
@@ -421,8 +421,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         };
 
         $result = $findInNested($data, $fieldUlid, $fieldSlug);
-        
-        
+
         return $result;
     }
 
@@ -720,11 +719,12 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
     public function hydrate(mixed $value, ?Model $model = null): mixed
     {
-        file_put_contents('/tmp/uploadcare_hydrate.log', "[" . date('H:i:s') . "] hydrate called. Value type: " . gettype($value) . ", Value: " . print_r($value, true) . "\n", FILE_APPEND);
+        file_put_contents('/tmp/uploadcare_hydrate.log', '[' . date('H:i:s') . '] hydrate called. Value type: ' . gettype($value) . ', Value: ' . print_r($value, true) . "\n", FILE_APPEND);
 
         // If value is null or empty, return early (don't load all media from relationship)
         if (empty($value)) {
             file_put_contents('/tmp/uploadcare_hydrate.log', "  > Value empty, returning.\n", FILE_APPEND);
+
             return $value;
         }
 
@@ -794,10 +794,10 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return $value;
     }
 
-    private static function mapMediaToValue(Model|array $media): array
+    private static function mapMediaToValue(Model | array $media): array
     {
         if (is_array($media)) {
-             return $media;
+            return $media;
         }
 
         $data = $media->edit ?? $media->metadata;
@@ -835,12 +835,12 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $media = $mediaQuery->get()->unique('ulid');
 
         $media->each(function ($m) {
-             if ($m->pivot && $m->pivot->meta) {
-                 $pivotMeta = is_string($m->pivot->meta) ? json_decode($m->pivot->meta, true) : $m->pivot->meta;
-                 if (is_array($pivotMeta)) {
-                     $m->setAttribute('edit', $pivotMeta);
-                 }
-             }
+            if ($m->pivot && $m->pivot->meta) {
+                $pivotMeta = is_string($m->pivot->meta) ? json_decode($m->pivot->meta, true) : $m->pivot->meta;
+                if (is_array($pivotMeta)) {
+                    $m->setAttribute('edit', $pivotMeta);
+                }
+            }
         });
 
         return self::extractMediaUrls($media, true);
