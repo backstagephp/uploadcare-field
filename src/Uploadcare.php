@@ -24,6 +24,11 @@ use Illuminate\Support\Facades\Auth;
 
 class Uploadcare extends Base implements FieldContract, HydratesValues
 {
+    public function getFieldType(): ?string
+    {
+        return 'uploadcare';
+    }
+
     public static function getDefaultConfig(): array
     {
         return [
@@ -256,10 +261,12 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             // Always return metadata for ULID-based values (default behavior), otherwise
             // the Uploadcare field may not be able to render a preview.
             $mediaData = self::extractMediaUrls($values, true);
-            $data[$record->valueColumn][$field->ulid] = $mediaData;
+            // Return as JSON string to avoid Array to String conversion errors in Filament
+            $data[$record->valueColumn][$field->ulid] = json_encode($mediaData);
         } else {
             $mediaUrls = self::extractCdnUrlsFromFileData($values);
-            $data[$record->valueColumn][$field->ulid] = $withMetadata ? $values : self::filterValidUrls($mediaUrls);
+            $result = $withMetadata ? $values : self::filterValidUrls($mediaUrls);
+            $data[$record->valueColumn][$field->ulid] = is_array($result) ? json_encode($result) : $result;
         }
 
         return $data;
@@ -402,7 +409,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
     {
         $fieldUlid = (string) $field->ulid;
         $fieldSlug = (string) $field->slug;
-        
 
         $findInNested = function ($array, $ulid, $slug) use (&$findInNested) {
             foreach ($array as $k => $value) {
@@ -741,7 +747,8 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $hydratedFromModel = self::hydrateFromModel($model, $value);
 
         if ($hydratedFromModel !== null && ! empty($hydratedFromModel)) {
-            return $hydratedFromModel;
+            // Ensure result is string
+            return is_array($hydratedFromModel) ? json_encode($hydratedFromModel) : $hydratedFromModel;
         }
 
         $mediaModel = self::getMediaModel();
@@ -751,7 +758,8 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             if (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $value)) {
                 $media = $mediaModel::where('ulid', $value)->first();
 
-                return $media ? [$media] : $value;
+                $result = $media ? [$media] : $value;
+                return is_array($result) ? json_encode($result) : $result;
             }
 
             // Check if it's a CDN URL - try to extract UUID and load Media
@@ -778,7 +786,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                             'cdnUrlModifiers' => $cdnUrlModifiers,
                         ]);
 
-                        return [$media];
+                        return json_encode([$media]);
                     }
                 }
             }
@@ -788,10 +796,10 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
         $hydratedUlids = self::hydrateBackstageUlids($value);
         if ($hydratedUlids !== null) {
-            return $hydratedUlids;
+            return json_encode($hydratedUlids);
         }
 
-        return $value;
+        return is_array($value) ? json_encode($value) : $value;
     }
 
     private static function mapMediaToValue(Model|array $media): array
@@ -809,7 +817,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return is_array($data) ? $data : [];
     }
 
-    private static function hydrateFromModel(?Model $model, mixed $value = null): ?array
+    private static function hydrateFromModel(?Model $model, mixed $value = null): mixed
     {
 
         if (! $model || ! method_exists($model, 'media')) {
@@ -843,7 +851,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
              }
         });
 
-        return self::extractMediaUrls($media, true);
+        return json_encode(self::extractMediaUrls($media, true));
     }
 
     private static function resolveMediaFromMixedValue(mixed $item): ?Model
