@@ -46,7 +46,7 @@ class MediaGridPicker extends Component
 
         // Apply search filter
         if (! empty($this->search)) {
-            $query->where('original_filename', 'like', '%'.$this->search.'%');
+            $query->where('original_filename', 'like', '%' . $this->search . '%');
         }
 
         // Apply accepted file types filter at query level
@@ -56,7 +56,7 @@ class MediaGridPicker extends Component
                     // Handle wildcard patterns like "image/*"
                     if (str_ends_with($acceptedType, '/*')) {
                         $baseType = substr($acceptedType, 0, -2);
-                        $q->orWhere('mime_type', 'like', $baseType.'/%');
+                        $q->orWhere('mime_type', 'like', $baseType . '/%');
                     }
                     // Handle exact matches
                     else {
@@ -147,7 +147,7 @@ class MediaGridPicker extends Component
             // Handle wildcard patterns like "image/*"
             if (str_ends_with($acceptedType, '/*')) {
                 $baseType = substr($acceptedType, 0, -2);
-                if (str_starts_with($mimeType, $baseType.'/')) {
+                if (str_starts_with($mimeType, $baseType . '/')) {
                     return true;
                 }
             }

@@ -383,7 +383,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
                 // Fallback for older records: construct a default Uploadcare URL if we only have a UUID.
                 if (! $cdnUrl && $uuid) {
-                    $cdnUrl = 'https://ucarecdn.com/'.$uuid.'/';
+                    $cdnUrl = 'https://ucarecdn.com/' . $uuid . '/';
                 }
 
                 if (! $cdnUrl || ! filter_var($cdnUrl, FILTER_VALIDATE_URL)) {
@@ -637,7 +637,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             $fileUuid = $metadata['uuid'] ?? ($metadata['fileInfo']['uuid'] ?? null) ?? self::extractUuidFromString((string) ($media->filename ?? ''));
 
             if (! $cdnUrl && $fileUuid) {
-                $cdnUrl = 'https://ucarecdn.com/'.$fileUuid.'/';
+                $cdnUrl = 'https://ucarecdn.com/' . $fileUuid . '/';
             }
 
             return is_string($cdnUrl) && filter_var($cdnUrl, FILTER_VALIDATE_URL) ? $cdnUrl : null;
@@ -650,14 +650,14 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $mediaModel = self::getMediaModel();
 
         $media = $mediaModel::where('filename', $uuid)
-            ->orWhere('metadata->cdnUrl', 'like', '%'.$uuid.'%')
+            ->orWhere('metadata->cdnUrl', 'like', '%' . $uuid . '%')
             ->first();
 
         if ($media && isset($media->metadata['cdnUrl'])) {
             return $media->metadata['cdnUrl'];
         }
 
-        return 'https://ucarecdn.com/'.$uuid.'/';
+        return 'https://ucarecdn.com/' . $uuid . '/';
     }
 
     private static function isValidCdnUrl(string $url): bool
@@ -726,7 +726,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
     public function hydrate(mixed $value, ?Model $model = null): mixed
     {
-        file_put_contents('/tmp/uploadcare_hydrate.log', '['.date('H:i:s').'] hydrate called. Value type: '.gettype($value).', Value: '.print_r($value, true)."\n", FILE_APPEND);
+        file_put_contents('/tmp/uploadcare_hydrate.log', '[' . date('H:i:s') . '] hydrate called. Value type: ' . gettype($value) . ', Value: ' . print_r($value, true) . "\n", FILE_APPEND);
 
         // If value is null or empty, return early (don't load all media from relationship)
         if (empty($value)) {
@@ -804,7 +804,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return is_array($value) ? json_encode($value) : $value;
     }
 
-    private static function mapMediaToValue(Model|array $media): array
+    private static function mapMediaToValue(Model | array $media): array
     {
         if (is_array($media)) {
             return $media;
@@ -839,7 +839,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
         if (! empty($ulids)) {
             $mediaQuery->whereIn('media_ulid', $ulids)
-                ->orderByRaw('FIELD(media_ulid, '.implode(',', array_fill(0, count($ulids), '?')).')', $ulids);
+                ->orderByRaw('FIELD(media_ulid, ' . implode(',', array_fill(0, count($ulids), '?')) . ')', $ulids);
         }
 
         $media = $mediaQuery->get()->unique('ulid');
