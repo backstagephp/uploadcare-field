@@ -760,6 +760,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                 $media = $mediaModel::where('ulid', $value)->first();
 
                 $result = $media ? [$media] : $value;
+
                 return is_array($result) ? json_encode($result) : $result;
             }
 
