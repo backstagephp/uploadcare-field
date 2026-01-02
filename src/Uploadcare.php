@@ -55,7 +55,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
                     if ($state instanceof \Illuminate\Support\Collection) {
                         $newState = $state->map(fn ($item) => $item instanceof Model ? self::mapMediaToValue($item) : $item)->all();
-                    } elseif (is_array($state) && isset($state[0]) && $state[0] instanceof Model) {
+                    } elseif (is_array($state) && isset($state[0]) && ($state[0] instanceof Model || is_array($state[0]))) {
                         $newState = array_map(fn ($item) => self::mapMediaToValue($item), $state);
                     } elseif ($state instanceof Model) {
                         $newState = self::mapMediaToValue($state);
@@ -384,10 +384,11 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                 }
 
                 if ($withMetadata) {
-                    return array_merge($metadata, array_filter([
+                    $result = array_merge($metadata, array_filter([
                         'uuid' => $uuid,
                         'cdnUrl' => $cdnUrl,
                     ]));
+                    return $result;
                 }
 
                 return $cdnUrl;
@@ -719,8 +720,11 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
     public function hydrate(mixed $value, ?Model $model = null): mixed
     {
+        file_put_contents('/tmp/uploadcare_hydrate.log', "[" . date('H:i:s') . "] hydrate called. Value type: " . gettype($value) . ", Value: " . print_r($value, true) . "\n", FILE_APPEND);
+
         // If value is null or empty, return early (don't load all media from relationship)
         if (empty($value)) {
+            file_put_contents('/tmp/uploadcare_hydrate.log', "  > Value empty, returning.\n", FILE_APPEND);
             return $value;
         }
 
@@ -736,8 +740,8 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         // Pass the value so hydrateFromModel can filter by ULIDs if needed
         $hydratedFromModel = self::hydrateFromModel($model, $value);
 
-        if ($hydratedFromModel !== null && $hydratedFromModel->isNotEmpty()) {
-            return $hydratedFromModel->all();
+        if ($hydratedFromModel !== null && ! empty($hydratedFromModel)) {
+            return $hydratedFromModel;
         }
 
         $mediaModel = self::getMediaModel();
@@ -790,8 +794,12 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return $value;
     }
 
-    private static function mapMediaToValue(Model $media): array
+    private static function mapMediaToValue(Model|array $media): array
     {
+        if (is_array($media)) {
+             return $media;
+        }
+
         $data = $media->edit ?? $media->metadata;
 
         if (is_string($data)) {
@@ -801,8 +809,9 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return is_array($data) ? $data : [];
     }
 
-    private static function hydrateFromModel(?Model $model, mixed $value = null): ?\Illuminate\Support\Collection
+    private static function hydrateFromModel(?Model $model, mixed $value = null): ?array
     {
+
         if (! $model || ! method_exists($model, 'media')) {
             return null;
         }
@@ -825,70 +834,16 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
         $media = $mediaQuery->get()->unique('ulid');
 
-        if ($media->isEmpty()) {
-            return null;
-        }
+        $media->each(function ($m) {
+             if ($m->pivot && $m->pivot->meta) {
+                 $pivotMeta = is_string($m->pivot->meta) ? json_decode($m->pivot->meta, true) : $m->pivot->meta;
+                 if (is_array($pivotMeta)) {
+                     $m->setAttribute('edit', $pivotMeta);
+                 }
+             }
+        });
 
-        try {
-            return $media->map(function ($mediaItem) {
-                $meta = null;
-                if (isset($mediaItem->pivot) && isset($mediaItem->pivot->meta)) {
-                    $meta = is_string($mediaItem->pivot->meta)
-                        ? json_decode($mediaItem->pivot->meta, true)
-                        : $mediaItem->pivot->meta;
-                }
-                $meta = is_array($meta) ? $meta : [];
-
-                // Get base metadata
-                $metadata = is_string($mediaItem->metadata)
-                    ? json_decode($mediaItem->metadata, true)
-                    : $mediaItem->metadata;
-                $metadata = is_array($metadata) ? $metadata : [];
-
-                // Merge pivot meta (cropped data) with base metadata, pivot takes precedence
-                $mergedMeta = array_merge($metadata, $meta);
-
-                // Ensure cdnUrlModifiers is included from pivot meta
-                $cdnUrl = $mergedMeta['cdnUrl'] ?? $metadata['cdnUrl'] ?? null;
-                $cdnUrlModifiers = $mergedMeta['cdnUrlModifiers'] ?? null;
-
-                // If we have a cdnUrl with modifiers but no explicit cdnUrlModifiers, extract from URL
-                if (! $cdnUrlModifiers && $cdnUrl && is_string($cdnUrl)) {
-                    $uuid = self::extractUuidFromString($cdnUrl);
-                    if ($uuid) {
-                        $uuidPos = strpos($cdnUrl, $uuid);
-                        if ($uuidPos !== false) {
-                            $modifiers = substr($cdnUrl, $uuidPos + strlen($uuid));
-                            if (! empty($modifiers) && $modifiers[0] === '/') {
-                                $cdnUrlModifiers = substr($modifiers, 1);
-                            } elseif (! empty($modifiers)) {
-                                $cdnUrlModifiers = $modifiers;
-                            }
-                        }
-                    }
-                }
-
-                // Add cdnUrlModifiers to merged meta if extracted
-                if ($cdnUrlModifiers) {
-                    $mergedMeta['cdnUrlModifiers'] = $cdnUrlModifiers;
-                }
-                if ($cdnUrl) {
-                    $mergedMeta['cdnUrl'] = $cdnUrl;
-                }
-                if (! isset($mergedMeta['uuid'])) {
-                    $mergedMeta['uuid'] = $mediaItem->filename;
-                }
-
-                // Attach merged metadata to Media object's edit property (used by UploadcareService)
-                $mediaItem->setAttribute('edit', $mergedMeta);
-
-                return $mediaItem;
-            })
-                ->filter() // Remove any null items
-                ->values();
-        } catch (\Throwable $e) {
-            return null;
-        }
+        return self::extractMediaUrls($media, true);
     }
 
     private static function resolveMediaFromMixedValue(mixed $item): ?Model

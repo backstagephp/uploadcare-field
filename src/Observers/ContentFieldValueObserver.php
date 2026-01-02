@@ -14,9 +14,7 @@ class ContentFieldValueObserver
             return;
         }
 
-        \Log::info('[Uploadcare Debug] Observer saved called for field ULID: ' . $contentFieldValue->field_ulid);
         $value = $contentFieldValue->getAttribute('value');
-        \Log::info('[Uploadcare Debug] Observer value:', ['value' => $value]);
 
         // Normalize initial value: it could be a raw JSON string or already an array/object
         if (is_string($value)) {
@@ -205,11 +203,9 @@ class ContentFieldValueObserver
     private function syncRelationships(ContentFieldValue $contentFieldValue, array $mediaData, mixed $modifiedValue): void
     {
         DB::transaction(function () use ($contentFieldValue, $mediaData, $modifiedValue) {
-            \Log::info('[Uploadcare Debug] Detaching relationships for ContentFieldValue: ' . $contentFieldValue->ulid);
             $contentFieldValue->media()->detach();
 
             if (! empty($mediaData)) {
-                \Log::info('[Uploadcare Debug] Attaching media items:', ['count' => count($mediaData)]);
                 foreach ($mediaData as $data) {
                     $contentFieldValue->media()->attach($data['media_ulid'], [
                         'position' => $data['position'],
