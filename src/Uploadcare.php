@@ -63,7 +63,38 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                     } elseif (is_array($state) && isset($state[0]) && ($state[0] instanceof Model || is_array($state[0]))) {
                         $newState = array_map(fn ($item) => self::mapMediaToValue($item), $state);
                     } elseif ($state instanceof Model) {
-                        $newState = self::mapMediaToValue($state);
+                        $newState = [self::mapMediaToValue($state)];
+                    } elseif (is_array($state) && ! Arr::isList($state)) {
+                        $newState = [self::mapMediaToValue($state)];
+                    } elseif (is_array($state) && Arr::isList($state) && count($state) > 1 && is_string($state[0]) && preg_match('/^[0-9A-Z]{26}$/i', $state[0])) {
+                        // Handle "flattened" list case where keys are lost (e.g. Model to Array conversion quirks)
+                        // Heuristic: Input is a list of property values [ULID, ..., UUID, ..., URL, ...]
+                        // We reconstruct a valid single file object from this.
+                        $uuid = null;
+                        $cdnUrl = null;
+                        $filename = null;
+                        
+                        foreach ($state as $item) {
+                            if (!is_string($item)) continue;
+                            if (!$uuid && preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $item)) {
+                                $uuid = $item;
+                            }
+                            if (!$cdnUrl && str_contains($item, 'ucarecd.net/') && filter_var($item, FILTER_VALIDATE_URL)) {
+                                $cdnUrl = $item;
+                            }
+                            if (!$filename && preg_match('/\.[a-z0-9]{3,4}$/i', $item) && !str_starts_with($item, 'http')) {
+                                $filename = $item;
+                            }
+                        }
+
+                        if ($cdnUrl) {
+                            $newState = [[
+                                'uuid' => $uuid,
+                                'cdnUrl' => $cdnUrl,
+                                'original_filename' => $filename ?? null,
+                                'name' => $filename ?? null,
+                            ]];
+                        }
                     } elseif (is_string($state) && json_validate($state)) {
                         $newState = json_decode($state, true);
                     }
@@ -724,14 +755,11 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return $state;
     }
 
+    public ?Field $field_model = null;
+
     public function hydrate(mixed $value, ?Model $model = null): mixed
     {
-        file_put_contents('/tmp/uploadcare_hydrate.log', '[' . date('H:i:s') . '] hydrate called. Value type: ' . gettype($value) . ', Value: ' . print_r($value, true) . "\n", FILE_APPEND);
-
-        // If value is null or empty, return early (don't load all media from relationship)
         if (empty($value)) {
-            file_put_contents('/tmp/uploadcare_hydrate.log', "  > Value empty, returning.\n", FILE_APPEND);
-
             return $value;
         }
 
@@ -743,24 +771,36 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             }
         }
 
-        // Try to load from model relationship if available
-        // Pass the value so hydrateFromModel can filter by ULIDs if needed
-        $hydratedFromModel = self::hydrateFromModel($model, $value);
+        // Try to hydrate from relation
+        $hydratedFromModel = self::hydrateFromModel($model, $value, true);
 
         if ($hydratedFromModel !== null && ! empty($hydratedFromModel)) {
-            // Ensure result is string
-            return is_array($hydratedFromModel) ? json_encode($hydratedFromModel) : $hydratedFromModel;
+            // Check config to decide if we should return single or multiple
+            $config = $this->field_model->config ?? $model->field->config ?? [];
+            $isMultiple = $config['multiple'] ?? false;
+
+            if ($isMultiple) {
+                return $hydratedFromModel;
+            }
+            return $hydratedFromModel->first();
         }
 
         $mediaModel = self::getMediaModel();
-
+        
         if (is_string($value) && ! json_validate($value)) {
             // Check if it's a ULID
             if (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $value)) {
                 $media = $mediaModel::where('ulid', $value)->first();
 
-                $result = $media ? [$media] : $value;
-                return is_array($result) ? json_encode($result) : $result;
+                // Check config to decide if we should return single or multiple
+                $config = $this->field_model->config ?? $model->field->config ?? [];
+                $isMultiple = $config['multiple'] ?? false;
+
+                if ($isMultiple && $media) {
+                     return new \Illuminate\Database\Eloquent\Collection([$media]);
+                }
+
+                return $media ? [$media] : $value;
             }
 
             // Check if it's a CDN URL - try to extract UUID and load Media
@@ -787,7 +827,15 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                             'cdnUrlModifiers' => $cdnUrlModifiers,
                         ]);
 
-                        return json_encode([$media]);
+                         // Check config to decide if we should return single or multiple
+                        $config = $this->field_model->config ?? $model->field->config ?? [];
+                        $isMultiple = $config['multiple'] ?? false;
+
+                        if ($isMultiple) {
+                             return new \Illuminate\Database\Eloquent\Collection([$media]);
+                        }
+
+                        return [$media];
                     }
                 }
             }
@@ -795,12 +843,41 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             return $value;
         }
 
+        // Try manual hydration if relation hydration failed (e.g. pivot missing but media exists)
         $hydratedUlids = self::hydrateBackstageUlids($value);
+
         if ($hydratedUlids !== null) {
-            return json_encode($hydratedUlids);
+            // Check if we need to return a single item based on config, even for manual hydration
+            // Priority: Local field model config -> Parent model field config
+            $config = $this->field_model->config ?? $model->field->config ?? [];
+            
+             // hydrateBackstageUlids returns an array, so we check if single
+            if (! ($config['multiple'] ?? false) && is_array($hydratedUlids) && ! empty($hydratedUlids)) {
+                 // Wrap in collection first to match expected behavior if we were to return collection,
+                 // but here we want single model
+                 return $hydratedUlids[0];
+            }
+            // If expected multiple, return collection
+            return new \Illuminate\Database\Eloquent\Collection($hydratedUlids);
         }
 
-        return is_array($value) ? json_encode($value) : $value;
+        // If it looks like a list of ULIDs but failed to hydrate (e.g. media deleted),
+        // return an empty Collection (or null if single) instead of the raw string array.
+        if (is_array($value) && ! empty($value)) {
+            $first = reset($value);
+            $isString = is_string($first);
+            $matches = $isString ? preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $first) : false;
+        
+            if ($isString && $matches) {
+                 $config = $this->field_model->config ?? $model->field->config ?? [];
+                 if (! ($config['multiple'] ?? false)) {
+                      return null;
+                 }
+                return new \Illuminate\Database\Eloquent\Collection();
+            }
+        }
+
+        return $value;
     }
 
     private static function mapMediaToValue(Model | array $media): array
@@ -818,9 +895,8 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return is_array($data) ? $data : [];
     }
 
-    private static function hydrateFromModel(?Model $model, mixed $value = null): mixed
+    private static function hydrateFromModel(?Model $model, mixed $value = null, bool $returnModels = false): mixed
     {
-
         if (! $model || ! method_exists($model, 'media')) {
             return null;
         }
@@ -851,6 +927,10 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                 }
             }
         });
+
+        if ($returnModels) {
+            return $media;
+        }
 
         return json_encode(self::extractMediaUrls($media, true));
     }
