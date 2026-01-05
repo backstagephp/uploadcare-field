@@ -10,7 +10,7 @@ class ContentFieldValueObserver
 {
     public function saved(ContentFieldValue $contentFieldValue): void
     {
-        \Log::info("[OBSERVER DEBUG] ContentFieldValueObserver::saved triggered", [
+        \Log::info('[OBSERVER DEBUG] ContentFieldValueObserver::saved triggered', [
             'ulid' => $contentFieldValue->ulid,
             'field_ulid' => $contentFieldValue->field_ulid,
             'value_type' => gettype($contentFieldValue->value),
@@ -154,7 +154,7 @@ class ContentFieldValueObserver
                         $modifiers = substr($modifiers, 1);
                     }
                     if ($item && str_contains($item, '/-/crop/')) {
-                        \Log::info("[OBSERVER DEBUG] Found crop in URL string", ['item' => $item, 'modifiers' => $modifiers]);
+                        \Log::info('[OBSERVER DEBUG] Found crop in URL string', ['item' => $item, 'modifiers' => $modifiers]);
                     }
                     $meta = [
                         'cdnUrl' => $item,
@@ -170,8 +170,8 @@ class ContentFieldValueObserver
         } elseif (is_array($item)) {
             $uuid = $item['uuid'] ?? ($item['fileInfo']['uuid'] ?? null);
             $meta = $item;
-            
-            \Log::info("[CROP DEBUG] ContentFieldValueObserver::parseItem processing array item", [
+
+            \Log::info('[CROP DEBUG] ContentFieldValueObserver::parseItem processing array item', [
                 'uuid' => $uuid,
                 'has_cdnUrlModifiers' => isset($item['cdnUrlModifiers']),
                 'cdnUrlModifiers_value' => $item['cdnUrlModifiers'] ?? null,
@@ -179,8 +179,8 @@ class ContentFieldValueObserver
                 'item_keys' => array_keys($item),
             ]);
 
-            if (!empty($item['cdnUrlModifiers'])) {
-                 \Log::info("[OBSERVER DEBUG] Found explicit cdnUrlModifiers in array item", ['modifiers' => $item['cdnUrlModifiers']]);
+            if (! empty($item['cdnUrlModifiers'])) {
+                \Log::info('[OBSERVER DEBUG] Found explicit cdnUrlModifiers in array item', ['modifiers' => $item['cdnUrlModifiers']]);
             }
 
             // Try to extract modifiers from cdnUrl if not explicitly present or if we want to be sure
@@ -201,8 +201,8 @@ class ContentFieldValueObserver
                     }
                 }
             }
-            
-            \Log::info("[CROP DEBUG] ContentFieldValueObserver::parseItem final meta", [
+
+            \Log::info('[CROP DEBUG] ContentFieldValueObserver::parseItem final meta', [
                 'uuid' => $uuid,
                 'has_cdnUrlModifiers_in_meta' => isset($meta['cdnUrlModifiers']),
                 'cdnUrlModifiers_in_meta' => $meta['cdnUrlModifiers'] ?? null,
