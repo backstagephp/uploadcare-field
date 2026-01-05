@@ -10,6 +10,13 @@ class ContentFieldValueObserver
 {
     public function saved(ContentFieldValue $contentFieldValue): void
     {
+        \Log::info("[OBSERVER DEBUG] ContentFieldValueObserver::saved triggered", [
+            'ulid' => $contentFieldValue->ulid,
+            'field_ulid' => $contentFieldValue->field_ulid,
+            'value_type' => gettype($contentFieldValue->value),
+            'value_preview' => is_string($contentFieldValue->value) ? substr($contentFieldValue->value, 0, 100) : 'ARRAY/OBJ',
+        ]);
+
         if (! $this->isValidField($contentFieldValue)) {
             return;
         }
@@ -73,8 +80,11 @@ class ContentFieldValueObserver
 
         // Check if this specific array node is an Uploadcare File object
         if ($this->isUploadcareValue($data)) {
+            $isList = array_is_list($data);
+            $items = $isList ? $data : [$data];
             $newUlids = [];
-            foreach ($data as $index => $item) {
+
+            foreach ($items as $item) {
                 [$uuid, $meta] = $this->parseItem($item);
                 if ($uuid) {
                     $mediaUlid = $this->resolveMediaUlid($uuid);
@@ -89,7 +99,7 @@ class ContentFieldValueObserver
                 }
             }
 
-            return $newUlids;
+            return $isList ? $newUlids : ($newUlids[0] ?? null);
         }
 
         foreach ($data as $key => $value) {
@@ -101,32 +111,30 @@ class ContentFieldValueObserver
 
     private function isUploadcareValue(array $data): bool
     {
-        // Must be a list (integer keys)
-        if (! array_is_list($data)) {
-            return false;
-        }
-
-        // Check first item to see if it looks like an Uploadcare file structure
         if (empty($data)) {
-
             return false;
         }
 
-        $first = $data[0];
+        // If it's a list, check the first item
+        if (array_is_list($data)) {
+            $first = $data[0];
 
-        // Existing logic used: isset($value['uuid'])
-        if (is_array($first) && isset($first['uuid'])) {
-            return true;
-        }
-
-        if (is_string($first)) {
-            // UUID strings or URLs containing UUIDs
-            if (preg_match('/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i', $first)) {
+            if (is_array($first) && isset($first['uuid'])) {
                 return true;
             }
+
+            if (is_string($first)) {
+                // UUID strings or URLs containing UUIDs
+                if (preg_match('/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i', $first)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
-        return false;
+        // It's an associative array (single object). Check for uuid/cdnUrl.
+        return isset($data['uuid']) || (isset($data['cdnUrl']) && is_string($data['cdnUrl']));
     }
 
     private function parseItem(mixed $item): array
@@ -145,6 +153,9 @@ class ContentFieldValueObserver
                     if (! empty($modifiers) && $modifiers[0] === '/') {
                         $modifiers = substr($modifiers, 1);
                     }
+                    if ($item && str_contains($item, '/-/crop/')) {
+                        \Log::info("[OBSERVER DEBUG] Found crop in URL string", ['item' => $item, 'modifiers' => $modifiers]);
+                    }
                     $meta = [
                         'cdnUrl' => $item,
                         'cdnUrlModifiers' => $modifiers,
@@ -159,6 +170,18 @@ class ContentFieldValueObserver
         } elseif (is_array($item)) {
             $uuid = $item['uuid'] ?? ($item['fileInfo']['uuid'] ?? null);
             $meta = $item;
+            
+            \Log::info("[CROP DEBUG] ContentFieldValueObserver::parseItem processing array item", [
+                'uuid' => $uuid,
+                'has_cdnUrlModifiers' => isset($item['cdnUrlModifiers']),
+                'cdnUrlModifiers_value' => $item['cdnUrlModifiers'] ?? null,
+                'has_crop' => isset($item['crop']),
+                'item_keys' => array_keys($item),
+            ]);
+
+            if (!empty($item['cdnUrlModifiers'])) {
+                 \Log::info("[OBSERVER DEBUG] Found explicit cdnUrlModifiers in array item", ['modifiers' => $item['cdnUrlModifiers']]);
+            }
 
             // Try to extract modifiers from cdnUrl if not explicitly present or if we want to be sure
             if (isset($item['cdnUrl']) && is_string($item['cdnUrl']) && filter_var($item['cdnUrl'], FILTER_VALIDATE_URL)) {
@@ -178,6 +201,13 @@ class ContentFieldValueObserver
                     }
                 }
             }
+            
+            \Log::info("[CROP DEBUG] ContentFieldValueObserver::parseItem final meta", [
+                'uuid' => $uuid,
+                'has_cdnUrlModifiers_in_meta' => isset($meta['cdnUrlModifiers']),
+                'cdnUrlModifiers_in_meta' => $meta['cdnUrlModifiers'] ?? null,
+                'meta_keys' => array_keys($meta),
+            ]);
         }
 
         return [$uuid, $meta];

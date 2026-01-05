@@ -48,58 +48,137 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             input: Input::make($name)
                 ->withMetadata()
                 ->removeCopyright()
-                ->dehydrateStateUsing(function ($state) {
+                ->dehydrateStateUsing(function ($state, $component, $record) {
+                    \Log::info("[CROP DEBUG] dehydrateStateUsing called", [
+                        'field' => $component->getName(),
+                        'state_path' => $component->getStatePath(),
+                        'state_type' => gettype($state),
+                        'is_string' => is_string($state),
+                        'is_array' => is_array($state),
+                        'is_collection' => $state instanceof \Illuminate\Database\Eloquent\Collection,
+                    ]);
+                    
                     if (is_string($state) && json_validate($state)) {
-                        return json_decode($state, true);
+                        $state = json_decode($state, true);
+                    }
+                    
+                    // Ensure Media models are properly mapped to include crop data
+                    if ($state instanceof \Illuminate\Database\Eloquent\Collection) {
+                        return $state->map(fn ($item) => $item instanceof Model ? self::mapMediaToValue($item) : $item)->all();
+                    }
+                    
+                    if (is_array($state) && array_is_list($state)) {
+                        $result = array_map(function ($item) {
+                            if ($item instanceof Model || is_array($item)) {
+                                return self::mapMediaToValue($item);
+                            }
+                            
+                            return $item;
+                        }, $state);
+                        
+                        \Log::info("[CROP DEBUG] dehydrateStateUsing returning array", [
+                            'count' => count($result),
+                            'first_has_cdnUrlModifiers' => isset($result[0]['cdnUrlModifiers']),
+                            'first_item_keys' => isset($result[0]) && is_array($result[0]) ? array_keys($result[0]) : 'NOT_ARRAY',
+                        ]);
+                        
+                        /*
+                        // Ensure we return a single object (or string) for non-multiple fields during dehydration
+                        // to prevent Filament from clearing the state.
+                        if (! $component->isMultiple() && ! empty($result)) {
+                            return $result[0];
+                        }
+                        */
+
+                        return $result;
+                    }
+
+                    if (is_array($state)) {
+                        return self::mapMediaToValue($state);
                     }
 
                     return $state;
                 })
                 ->afterStateHydrated(function ($component, $state) {
+                    $fieldName = $component->getName();
+                    $record = $component->getRecord();
+
+                    
                     $newState = $state;
 
                     if ($state instanceof \Illuminate\Database\Eloquent\Collection) {
                         $newState = $state->map(fn ($item) => $item instanceof Model ? self::mapMediaToValue($item) : $item)->all();
-                    } elseif (is_array($state) && isset($state[0]) && ($state[0] instanceof Model || is_array($state[0]))) {
-                        $newState = array_map(fn ($item) => self::mapMediaToValue($item), $state);
+                    } elseif (is_array($state) && ! empty($state)) {
+                        $isList = array_is_list($state);
+                        $firstKey = array_key_first($state);
+                        $firstItem = $state[$firstKey];
+
+                        if ($isList && ($firstItem instanceof Model || is_array($firstItem))) {
+                            $newState = array_map(fn ($item) => self::mapMediaToValue($item), $state);
+                        } elseif (! $isList && (isset($state['uuid']) || isset($state['cdnUrl']))) {
+                            // Single rich object
+                            $newState = [self::mapMediaToValue($state)];
+                        } elseif ($isList && is_string($firstItem) && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $firstItem)) {
+                             // Resolution of ULIDs handled below
+                             $newState = $state;
+                        } elseif (is_array($firstItem)) {
+                             // Possibly a list of something else or nested
+                             $newState = array_map(fn ($item) => self::mapMediaToValue($item), $state);
+                        }
                     } elseif ($state instanceof Model) {
                         $newState = [self::mapMediaToValue($state)];
-                    } elseif (is_array($state) && !empty($state) && is_array($state[0])) {
-                        $newState = [self::mapMediaToValue($state)];
-                    } elseif (is_array($state) && Arr::isList($state) && count($state) > 0 && is_string($state[0])) {
-                         $potentialUlids = collect($state)->filter(fn($s) => preg_match('/^[0-9A-Z]{26}$/i', $s));
+                    }
+
+                    // Resolve ULIDs if we have a list of strings
+                    if (is_array($newState) && array_is_list($newState) && count($newState) > 0 && is_string($newState[0]) && preg_match('/^[0-9A-Z]{26}$/i', $newState[0])) {
+                         // Resolve ULIDs
+                         $potentialUlids = collect($newState)->filter(fn($s) => is_string($s) && preg_match('/^[0-9A-Z]{26}$/i', $s));
                          $mediaModel = self::getMediaModel();
                          $foundModels = new \Illuminate\Database\Eloquent\Collection();
 
-                         $record = $component->getRecord();
-                         $fieldName = $component->getName();
                          if ($record && $fieldName && $potentialUlids->isNotEmpty()) {
                              try {
+                                 // Robust field ULID resolution (matching component logic)
                                  $fieldUlid = $fieldName;
                                  if (str_contains($fieldName, '.')) {
-                                     $fieldUlid = explode('.', $fieldName)[1] ?? $fieldName;
+                                     $parts = explode('.', $fieldName);
+                                     foreach ($parts as $part) {
+                                         if (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $part)) {
+                                             $fieldUlid = $part;
+                                             break;
+                                         }
+                                     }
                                  }
+                                 
                                  $fieldValue = \Backstage\Models\ContentFieldValue::where('content_ulid', $record->getKey())
-                                     ->where('field_ulid', $fieldUlid)
+                                     ->where(function($query) use ($fieldUlid) {
+                                         $query->where('field_ulid', $fieldUlid)
+                                               ->orWhere('ulid', $fieldUlid);
+                                     })
                                      ->first();
                                  
                                  if ($fieldValue) {
                                      $foundModels = $fieldValue->media()
-                                        ->whereIn('ulid', $potentialUlids)
+                                        ->whereIn('media_ulid', $potentialUlids->toArray())
                                         ->get();
                                  }
-                             } catch (\Exception $e) {
-                                 $foundModels = new \Illuminate\Database\Eloquent\Collection();
-                             }
+                             } catch (\Exception $e) {}
                          }
 
                          if ($foundModels->isEmpty() && $potentialUlids->isNotEmpty()) {
-                             $foundModels = $mediaModel::whereIn('ulid', $potentialUlids)->get();
+                             $foundModels = $mediaModel::whereIn('ulid', $potentialUlids->toArray())->get();
                          }
 
                          if ($foundModels->isNotEmpty()) {
                              if ($record) {
-                                 $foundModels->each(function($m) use ($record) {
+                                 $foundModels->each(function($m) use ($record, $fieldName) {
+                                     $mediaUlid = $m->ulid ?? 'UNKNOWN';
+                                     
+                                     \Log::info("[CROP DEBUG] Hydrating media {$mediaUlid} in field {$fieldName}", [
+                                         'has_pivot' => $m->relationLoaded('pivot') && $m->pivot !== null,
+                                         'has_pivot_meta' => $m->relationLoaded('pivot') && $m->pivot && $m->pivot->meta !== null,
+                                     ]);
+                                     
                                      if ($m->relationLoaded('pivot') && $m->pivot && $m->pivot->meta) {
                                          $meta = is_string($m->pivot->meta) ? json_decode($m->pivot->meta, true) : $m->pivot->meta;
                                          if (is_array($meta)) {
@@ -123,48 +202,80 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                              } else {
                                   $newState = $foundModels->map(fn($m) => self::mapMediaToValue($m))->all();
                              }
+                             
                          } else {
-                             $uuid = null;
-                             $cdnUrl = null;
-                             $filename = null;
-                             $hasStructure = false;
+                             // Process each item in the state array
+                             $extractedFiles = [];
                              
                              foreach ($state as $item) {
+                                 if (is_array($item)) {
+                                     $extractedFiles[] = self::mapMediaToValue($item);
+                                     continue;
+                                 }
+
                                  if (!is_string($item)) continue;
-                                 if (!$uuid && preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $item)) {
+                                 
+                                 $uuid = null;
+                                 $cdnUrl = null;
+                                 $filename = null;
+                                 
+                                 // Check if it's a UUID
+                                 if (preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $item)) {
                                      $uuid = $item;
-                                     $hasStructure = true;
                                  }
-                                 if (!$cdnUrl && str_contains($item, 'ucarecd.net/') && filter_var($item, FILTER_VALIDATE_URL)) {
+                                 // Check if it's a CDN URL
+                                 elseif (str_contains($item, 'ucarecd.net/') && filter_var($item, FILTER_VALIDATE_URL)) {
                                      $cdnUrl = $item;
-                                     $hasStructure = true;
+                                     $uuid = self::extractUuidFromString($cdnUrl);
                                  }
-                                 if (!$filename && preg_match('/\.[a-z0-9]{3,4}$/i', $item) && !str_starts_with($item, 'http')) {
+                                 // Check if it's a filename
+                                 elseif (preg_match('/\.[a-z0-9]{3,4}$/i', $item) && !str_starts_with($item, 'http')) {
                                      $filename = $item;
                                  }
+                                 
+                                 // If we found a UUID or CDN URL, add it to the extracted files
+                                 if ($uuid || $cdnUrl) {
+                                     $fileData = [
+                                         'uuid' => $uuid ?? self::extractUuidFromString($cdnUrl ?? ''),
+                                         'cdnUrl' => $cdnUrl ?? ($uuid ? 'https://ucarecdn.com/' . $uuid . '/' : null),
+                                         'original_filename' => $filename,
+                                         'name' => $filename,
+                                     ];
+                                     $extractedFiles[] = self::mapMediaToValue($fileData);
+                                 }
                              }
+                             
+                             if (!empty($extractedFiles)) {
+                                 $newState = $extractedFiles;
 
-                             if ($hasStructure && ($uuid || $cdnUrl)) {
-                                 $newState = [[
-                                     'uuid' => $uuid ?? self::extractUuidFromString($cdnUrl ?? ''),
-                                     'cdnUrl' => $cdnUrl,
-                                     'original_filename' => $filename,
-                                     'name' => $filename,
-                                 ]];
                              } else {
-                                 $newState = array_map(function($item) {
-                                     if (is_string($item) && json_validate($item)) {
-                                         return json_decode($item, true);
-                                     }
-                                     return $item;
-                                 }, $state);
+                                 if (array_is_list($state)) {
+                                     $newState = array_map(function($item) {
+                                         if (is_string($item) && json_validate($item)) {
+                                             return self::mapMediaToValue(json_decode($item, true));
+                                         }
+                                         return self::mapMediaToValue($item);
+                                     }, $state);
+                                 } else {
+                                     $newState = self::mapMediaToValue($state);
+                                 }
                              }
                          }
 
                     } elseif (is_string($state) && json_validate($state)) {
+
                         $newState = json_decode($state, true);
                     } else {
+
                     }
+
+                    \Log::info("[CROP DEBUG] afterStateHydrated final result", [
+                        'field' => $fieldName,
+                        'type' => gettype($newState),
+                        'is_array' => is_array($newState),
+                        'is_list' => is_array($newState) ? array_is_list($newState) : 'N/A',
+                        'count' => is_array($newState) ? count($newState) : 'N/A',
+                    ]);
 
                     if ($newState !== $state) {
                         $component->state($newState);
@@ -340,16 +451,30 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             return $data;
         }
 
-        if (! property_exists($record, 'valueColumn') || ! isset($record->values[$field->ulid])) {
-            return $data;
+        \Log::info("[CROP DEBUG] mutateFormDataCallback start", [
+            'field' => $field->ulid,
+            'record_exists' => $record->exists,
+            'has_values_prop' => isset($record->values),
+            'record_values_type' => isset($record->values) ? gettype($record->values) : 'null',
+        ]);
+
+        $values = null;
+
+        // 1. Try to get from property first (set by EditContent)
+        if (isset($record->values) && is_array($record->values)) {
+            $values = $record->values[$field->ulid] ?? null;
+            \Log::info("[CROP DEBUG] Got value from property", ['value_type' => gettype($values)]);
         }
 
+        // 2. Fallback to getFieldValueFromRecord which checks relationships
+        if ($values === null) {
+            $values = self::getFieldValueFromRecord($record, $field);
+            \Log::info("[CROP DEBUG] Got value from getFieldValueFromRecord", ['value_type' => gettype($values)]);
+        }
 
-        $values = $record->values[$field->ulid];
-
-        if ($values == '' || $values == [] || $values == null || empty($values)) {
-            $data[$record->valueColumn][$field->ulid] = [];
-
+        if ($values === '' || $values === [] || $values === null || empty($values)) {
+            $data[$record->valueColumn ?? 'values'][$field->ulid] = [];
+            \Log::info("[CROP DEBUG] Value empty, setting empty array");
             return $data;
         }
 
@@ -357,7 +482,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $values = self::parseValues($values);
 
         if (self::isMediaUlidArray($values)) {
-            // Try to load via ContentFieldValue relation to ensure pivot data (crops) are included
             $mediaData = null;
 
             if ($record->exists && class_exists(\Backstage\Models\ContentFieldValue::class)) {
@@ -378,17 +502,14 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             }
 
             if (empty($mediaData)) {
-                // Always return metadata for ULID-based values (default behavior), otherwise
-                // the Uploadcare field may not be able to render a preview.
                 $mediaData = self::extractMediaUrls($values, true);
             }
             
-            // Return as JSON string to avoid Array to String conversion errors in Filament
-            $data[$record->valueColumn][$field->ulid] = json_encode($mediaData);
+            $data[$record->valueColumn ?? 'values'][$field->ulid] = $mediaData;
         } else {
             $mediaUrls = self::extractCdnUrlsFromFileData($values);
             $result = $withMetadata ? $values : self::filterValidUrls($mediaUrls);
-            $data[$record->valueColumn][$field->ulid] = is_array($result) ? json_encode($result) : $result;
+            $data[$record->valueColumn ?? 'values'][$field->ulid] = $result;
         }
 
         return $data;
@@ -400,55 +521,39 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             return $data;
         }
 
-        if (! property_exists($record, 'valueColumn')) {
-            return $data;
-        }
+        // Handle valueColumn default or missing property
+        $valueColumn = $record->valueColumn ?? 'values';
 
-        $values = self::findFieldValues($data[$record->valueColumn] ?? [], $field);
+        $values = self::findFieldValues($data, $field);
+        
+        \Log::info("[CROP DEBUG] mutateBeforeSaveCallback", [
+            'field' => $field->ulid,
+            'values_type' => gettype($values),
+            'values_preview' => is_array($values) ? (array_is_list($values) ? 'list count ' . count($values) : 'assoc keys ' . implode(',', array_keys($values))) : $values,
+            'data_keys' => array_keys($data),
+        ]);
 
-        if ($values === '' || $values === [] || $values === null) {
-            $data[$record->valueColumn][$field->ulid] = null;
+
+        if ($values === '' || $values === [] || $values === null || empty($values)) {
+            // Check if key exists using strict check to avoid wiping out data that wasn't submitted
+            $fieldFound = array_key_exists($field->ulid, $data) || 
+                         array_key_exists($field->slug, $data) || 
+                         (isset($data['values']) && is_array($data['values']) && (array_key_exists($field->ulid, $data['values']) || array_key_exists($field->slug, $data['values'])));
+
+            if ($fieldFound) {
+                $data[$valueColumn][$field->ulid] = [];
+            }
 
             return $data;
         }
 
         $values = self::normalizeValues($values);
-        
 
-        if (is_array($values) && !empty($values) && isset($values[0]) && is_string($values[0]) && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $values[0])) {
-             if ($record->exists && class_exists(\Backstage\Models\ContentFieldValue::class)) {
-                try {
-                     $cfv = \Backstage\Models\ContentFieldValue::where('content_ulid', $record->ulid)
-                        ->where('field_ulid', $field->ulid)
-                        ->first();
-                        
-                     if ($cfv) {
-                         $fullyHydrated = [];
-                         $existingMedia = $cfv->media->keyBy('ulid');
-                         
-                         foreach ($values as $ulid) {
-                             if ($existingMedia->has($ulid)) {
-                                 $mediaItem = $existingMedia->get($ulid);
-                                 $fullyHydrated[] = self::mapMediaToValue($mediaItem);
-                             } else {
-                                 $fullyHydrated[] = $ulid;
-                             }
-                         }
-                         $values = $fullyHydrated;
-                     }
-                } catch (\Exception $e) {
-                }
-             }
-        }
+        // Side effect: create media records for new uploads
+        self::processUploadedFiles($values);
 
-        if (! is_array($values)) {
-            return $data;
-        }
-
-        $media = self::processUploadedFiles($values);
-
-
-        $data[$record->valueColumn][$field->ulid] = $values;
+        // Save the values (Array) - Filament/PersistsContentData will handle encoding if needed
+        $data[$valueColumn][$field->ulid] = $values;
 
         return $data;
     }
@@ -559,23 +664,62 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $fieldUlid = (string) $field->ulid;
         $fieldSlug = (string) $field->slug;
 
-        $findInNested = function ($array, $ulid, $slug) use (&$findInNested) {
+        \Log::info("[CROP DEBUG] findFieldValues searching", [
+            'ulid' => $fieldUlid,
+            'slug' => $fieldSlug,
+            'data_keys' => array_keys($data),
+            'has_values_key' => isset($data['values']),
+            'values_is_array' => isset($data['values']) && is_array($data['values']),
+            'values_is_string' => isset($data['values']) && is_string($data['values']),
+        ]);
+
+        // Try direct key first (most common)
+        if (array_key_exists($fieldUlid, $data)) return $data[$fieldUlid];
+        if (array_key_exists($fieldSlug, $data)) return $data[$fieldSlug];
+
+        // Recursive search that correctly traverses lists (repeaters/builders)
+        $notFound = new \stdClass();
+        $findInNested = function ($array, $ulid, $slug, $depth = 0) use (&$findInNested, $notFound) {
+            $keys = array_keys($array);
+            \Log::info("[CROP DEBUG] findInNested level {$depth}", [
+                'keys' => $keys,
+                'searching_for' => [$ulid, $slug]
+            ]);
+
+            // First pass: look for direct keys at this level
+            if (array_key_exists($ulid, $array)) {
+                \Log::info("[CROP DEBUG] findInNested FOUND direct key", ['key' => $ulid, 'value_type' => gettype($array[$ulid]), 'value_preview' => $array[$ulid]]);
+                return $array[$ulid];
+            }
+            if (array_key_exists($slug, $array)) {
+                return $array[$slug];
+            }
+
+            // Second pass: recurse
             foreach ($array as $k => $value) {
-                if ($k === $ulid || $k === $slug) {
-                    return $value;
-                }
                 if (is_array($value)) {
-                    $result = $findInNested($value, $ulid, $slug);
-                    if ($result !== null) {
+                    $result = $findInNested($value, $ulid, $slug, $depth + 1);
+                    if ($result !== $notFound) {
                         return $result;
                     }
                 }
             }
-
-            return null;
+            return $notFound;
         };
 
         $result = $findInNested($data, $fieldUlid, $fieldSlug);
+        
+        if ($result === $notFound) {
+            $result = null;
+            $found = false;
+        } else {
+            $found = true;
+        }
+        
+        \Log::info("[CROP DEBUG] findFieldValues result", [
+            'found' => $found,
+            'type' => gettype($result),
+        ]);
 
         return $result;
     }
@@ -595,6 +739,15 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
     private static function processUploadedFiles(array $files): array
     {
+        \Log::info("[CROP DEBUG] processUploadedFiles starting", [
+            'count' => count($files),
+            'is_list' => array_is_list($files),
+        ]);
+
+        if (! empty($files) && ! array_is_list($files)) {
+            $files = [$files];
+        }
+
         $media = [];
 
         foreach ($files as $index => $file) {
@@ -681,19 +834,19 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $media = $mediaModel::updateOrCreate([
             'site_ulid' => $tenantUlid,
             'disk' => 'uploadcare',
-            'filename' => $info['uuid'],
+            'filename' => $info['uuid'] ?? ($info['fileInfo']['uuid'] ?? null),
         ], [
-            'original_filename' => $info['name'],
+            'original_filename' => $info['name'] ?? ($info['original_filename'] ?? 'unknown'),
             'uploaded_by' => Auth::id(),
             'extension' => $detailedInfo['format'] ?? null,
-            'mime_type' => $info['mimeType'],
-            'size' => $info['size'],
+            'mime_type' => $info['mimeType'] ?? ($info['mime_type'] ?? null),
+            'size' => $info['size'] ?? 0,
             'width' => $detailedInfo['width'] ?? null,
             'height' => $detailedInfo['height'] ?? null,
             'alt' => null,
             'public' => config('backstage.media.visibility') === 'public',
             'metadata' => $info,
-            'checksum' => md5($info['uuid']),
+            'checksum' => md5($info['uuid'] ?? uniqid()),
         ]);
 
         return $media;
@@ -876,6 +1029,12 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
     public function hydrate(mixed $value, ?Model $model = null): mixed
     {
+        \Log::info("[CROP DEBUG] Uploadcare::hydrate called", [
+            'value_type' => gettype($value),
+            'value_preview' => is_string($value) ? $value : (is_array($value) ? 'Array count ' . count($value) : 'Object'),
+            'model_exists' => $model ? $model->exists : false,
+        ]);
+
         if (empty($value)) {
             return null;
         }
@@ -890,6 +1049,11 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
 
         // Try to hydrate from relation
         $hydratedFromModel = self::hydrateFromModel($model, $value, true);
+
+        \Log::info("[CROP DEBUG] hydrateFromModel result in hydrate()", [
+            'found' => $hydratedFromModel && !empty($hydratedFromModel),
+            'count' => $hydratedFromModel ? $hydratedFromModel->count() : 0,
+        ]);
 
         if ($hydratedFromModel !== null && ! empty($hydratedFromModel)) {
             // Check config to decide if we should return single or multiple
@@ -997,22 +1161,80 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return $value;
     }
 
-    private static function mapMediaToValue(Model | array $media): array
+    public static function mapMediaToValue(mixed $media): array|string
     {
+        if (! $media instanceof Model && ! is_array($media)) {
+             return is_string($media) ? $media : [];
+        }
+
+        $source = 'unknown';
         if (is_array($media)) {
-            return $media;
+             $data = $media;
+             $source = 'array';
+        } else {
+             $hasHydratedEdit = $media instanceof Model && array_key_exists('hydrated_edit', $media->getAttributes());
+             $data = $hasHydratedEdit ? $media->getAttribute('hydrated_edit') : $media->getAttribute('edit');
+             $source = $hasHydratedEdit ? 'hydrated_edit' : 'edit_accessor';
+
+             // Prioritize pivot meta if loaded, as it contains usage-specific modifiers
+             if ($media->relationLoaded('pivot') && $media->pivot && ! empty($media->pivot->meta)) {
+                 $pivotMeta = $media->pivot->meta;
+                 if (is_string($pivotMeta)) {
+                     $pivotMeta = json_decode($pivotMeta, true);
+                 }
+                 
+                 // Merge pivot meta over existing data, or use it as primary if data is empty
+                 if (is_array($pivotMeta)) {
+                     $data = !empty($data) && is_array($data) ? array_merge($data, $pivotMeta) : $pivotMeta;
+                     $source = 'pivot_meta_merged';
+                 }
+             }
+
+             $data = $data ?? $media->metadata;
+             if (empty($data)) $source = 'none';
+
+             if (is_string($data)) {
+                 $data = json_decode($data, true);
+             }
         }
 
-        $data = $media->hydrated_edit ?? $media->edit;
+        \Log::info("[CROP DEBUG] mapMediaToValue source: {$source}", [
+            'has_cdnUrlModifiers' => isset($data['cdnUrlModifiers']),
+            'cdnUrl' => $data['cdnUrl'] ?? null,
+        ]);
 
-        if (empty($data) && $media->relationLoaded('pivot') && $media->pivot && $media->pivot->meta) {
-            $data = $media->pivot->meta;
-        }
+        if (is_array($data)) {
+            // Extract modifiers from cdnUrl if missing
+            if (isset($data['cdnUrl']) && ! isset($data['cdnUrlModifiers'])) {
+                $cdnUrl = $data['cdnUrl'];
+                // Extract UUID and modifiers from URL like: https://ucarecdn.com/{uuid}/{modifiers}
+                if (preg_match('/([a-f0-9-]{36})\/(.+)$/', $cdnUrl, $matches)) {
+                    $modifiers = $matches[2];
+                    // Clean up trailing slash
+                    $modifiers = rtrim($modifiers, '/');
+                    if (! empty($modifiers) && $modifiers !== '-/preview') {
+                        $data['cdnUrlModifiers'] = $modifiers;
+                        \Log::info('[CROP DEBUG] Extracted modifiers from URL', [
+                            'uuid' => $matches[1],
+                            'modifiers' => $modifiers,
+                        ]);
+                    }
+                }
+            }
 
-        $data = $data ?? $media->metadata;
-
-        if (is_string($data)) {
-            $data = json_decode($data, true);
+            // Append modifiers to cdnUrl if present and not already part of the URL
+            if (isset($data['cdnUrl'], $data['cdnUrlModifiers']) && ! str_contains($data['cdnUrl'], '/-/')) {
+                $modifiers = $data['cdnUrlModifiers'];
+                if (str_starts_with($modifiers, '/')) {
+                    $modifiers = substr($modifiers, 1);
+                }
+                
+                // Ensure cdnUrl includes modifiers
+                $data['cdnUrl'] = rtrim($data['cdnUrl'], '/') . '/' . $modifiers;
+                if (! str_ends_with($data['cdnUrl'], '/')) {
+                    $data['cdnUrl'] .= '/';
+                }
+            }
         }
 
         return is_array($data) ? $data : [];
@@ -1043,8 +1265,25 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $media = $mediaQuery->get()->unique('ulid');
 
         $media->each(function ($m) use ($model) {
+            $mediaUlid = $m->ulid ?? 'UNKNOWN';
+            
+            \Log::info("[CROP DEBUG] Processing media {$mediaUlid} in hydrateFromModel", [
+                'has_pivot' => $m->pivot !== null,
+                'has_pivot_meta' => $m->pivot && $m->pivot->meta !== null,
+                'pivot_meta_type' => $m->pivot && $m->pivot->meta ? gettype($m->pivot->meta) : 'NULL',
+                'pivot_meta_preview' => $m->pivot && $m->pivot->meta ? (is_string($m->pivot->meta) ? substr($m->pivot->meta, 0, 200) : json_encode($m->pivot->meta)) : null,
+            ]);
+            
             if ($m->pivot && $m->pivot->meta) {
                 $pivotMeta = is_string($m->pivot->meta) ? json_decode($m->pivot->meta, true) : $m->pivot->meta;
+                
+                \Log::info("[CROP DEBUG] Decoded pivot meta for media {$mediaUlid}", [
+                    'is_array' => is_array($pivotMeta),
+                    'has_crop' => is_array($pivotMeta) && isset($pivotMeta['crop']),
+                    'has_cdnUrlModifiers' => is_array($pivotMeta) && isset($pivotMeta['cdnUrlModifiers']),
+                    'keys' => is_array($pivotMeta) ? array_keys($pivotMeta) : 'NOT_ARRAY',
+                ]);
+                
                 if (is_array($pivotMeta)) {
                     $m->setAttribute('hydrated_edit', $pivotMeta);
                     if ($model) {
@@ -1052,7 +1291,11 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                         $contextModel->setRelation('pivot', $m->pivot);
                         $m->setRelation('edits', new \Illuminate\Database\Eloquent\Collection([$contextModel]));
                     }
+                    
+                    \Log::info("[CROP DEBUG] Set hydrated_edit for media {$mediaUlid}");
                 }
+            } else {
+                \Log::warning("[CROP DEBUG] No pivot meta found for media {$mediaUlid}");
             }
         });
 
