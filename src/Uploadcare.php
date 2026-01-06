@@ -190,52 +190,13 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
                          } else {
                              // Process each item in the state array
                              $extractedFiles = [];
-                             
+
                              foreach ($state as $item) {
                                  if (is_array($item)) {
                                      $extractedFiles[] = self::mapMediaToValue($item);
+
                                      continue;
                                  }
-
-                                    \Log::info("[CROP DEBUG] Hydrating media {$mediaUlid} in field {$fieldName}", [
-                                        'has_pivot' => $m->relationLoaded('pivot') && $m->pivot !== null,
-                                        'has_pivot_meta' => $m->relationLoaded('pivot') && $m->pivot && $m->pivot->meta !== null,
-                                    ]);
-
-                                    if ($m->relationLoaded('pivot') && $m->pivot && $m->pivot->meta) {
-                                        $meta = is_string($m->pivot->meta) ? json_decode($m->pivot->meta, true) : $m->pivot->meta;
-                                        if (is_array($meta)) {
-                                            $m->setAttribute('hydrated_edit', $meta);
-                                        }
-                                    }
-                                    $contextModel = clone $record;
-                                    if ($m->relationLoaded('pivot') && $m->pivot) {
-                                        $contextModel->setRelation('pivot', $m->pivot);
-                                    } else {
-                                        $dummyPivot = new \Backstage\Models\ContentFieldValue;
-                                        $dummyPivot->setAttribute('meta', null);
-                                        $contextModel->setRelation('pivot', $dummyPivot);
-                                    }
-                                    $m->setRelation('edits', new \Illuminate\Database\Eloquent\Collection([$contextModel]));
-                                });
-                            }
-
-                            if ($foundModels->count() === 1 && count($state) > 1) {
-                                $newState = [self::mapMediaToValue($foundModels->first())];
-                            } else {
-                                $newState = $foundModels->map(fn ($m) => self::mapMediaToValue($m))->all();
-                            }
-
-                        } else {
-                            // Process each item in the state array
-                            $extractedFiles = [];
-
-                            foreach ($state as $item) {
-                                if (is_array($item)) {
-                                    $extractedFiles[] = self::mapMediaToValue($item);
-
-                                    continue;
-                                }
 
                                 if (! is_string($item)) {
                                     continue;
@@ -471,8 +432,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             return $data;
         }
 
-        
-
         $values = null;
 
         // 1. Try to get from property first (set by EditContent)
@@ -540,8 +499,6 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $valueColumn = $record->valueColumn ?? 'values';
 
         $values = self::findFieldValues($data, $field);
-        
-        
 
         if ($values === '' || $values === [] || $values === null || empty($values)) {
             // Check if key exists using strict check to avoid wiping out data that wasn't submitted
