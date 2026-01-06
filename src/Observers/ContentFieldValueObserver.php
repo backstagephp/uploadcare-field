@@ -160,7 +160,7 @@ class ContentFieldValueObserver
         } elseif (is_array($item)) {
             $uuid = $item['uuid'] ?? ($item['fileInfo']['uuid'] ?? null);
             $meta = $item;
-            
+
             // Try to extract modifiers from cdnUrl if not explicitly present or if we want to be sure
             if (isset($item['cdnUrl']) && is_string($item['cdnUrl']) && filter_var($item['cdnUrl'], FILTER_VALIDATE_URL)) {
                 preg_match('/([a-f0-9-]{36})/i', $item['cdnUrl'], $matches, PREG_OFFSET_CAPTURE);
