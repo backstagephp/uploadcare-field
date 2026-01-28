@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                $currentPath = $path === '' ? $key : $path.'.'.$key;
+                $currentPath = $path === '' ? $key : $path . '.' . $key;
                 if (is_string($value)) {
                     $decoded = $value;
                     $decodeCount = 0;
