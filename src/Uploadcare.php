@@ -704,12 +704,18 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             if (self::isArrayOfArrays($normalizedFiles)) {
                 foreach ($normalizedFiles as $singleFile) {
                     if ($singleFile !== null) {
-                        $media[] = self::createOrUpdateMediaRecord($singleFile);
+                        $mediaRecord = self::createOrUpdateMediaRecord($singleFile);
+                        if ($mediaRecord !== null) {
+                            $media[] = $mediaRecord;
+                        }
                     }
                 }
             } else {
                 if (is_array($normalizedFiles)) {
-                    $media[] = self::createOrUpdateMediaRecord($normalizedFiles);
+                    $mediaRecord = self::createOrUpdateMediaRecord($normalizedFiles);
+                    if ($mediaRecord !== null) {
+                        $media[] = $mediaRecord;
+                    }
                 }
             }
         }
@@ -762,7 +768,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         return $url && filter_var($url, FILTER_VALIDATE_URL) ? $url : null;
     }
 
-    private static function createOrUpdateMediaRecord(array $file): Model
+    private static function createOrUpdateMediaRecord(array $file): ?Model
     {
         $mediaModel = self::getMediaModel();
 
@@ -773,12 +779,24 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
         $info = $file['fileInfo'] ?? $file;
         $detailedInfo = self::extractDetailedInfo($info);
 
+        // Extract UUID - this is required for Uploadcare files
+        $uuid = $info['uuid'] ?? ($info['fileInfo']['uuid'] ?? null);
+
+        // Skip if no UUID is present - we can't create a valid media record without it
+        if (empty($uuid)) {
+            \Log::warning('Uploadcare: Skipping media record creation - UUID missing from file data', [
+                'file_data' => $file,
+            ]);
+
+            return null;
+        }
+
         $tenantUlid = Filament::getTenant()->ulid ?? null;
 
         $media = $mediaModel::updateOrCreate([
             'site_ulid' => $tenantUlid,
             'disk' => 'uploadcare',
-            'filename' => $info['uuid'] ?? ($info['fileInfo']['uuid'] ?? null),
+            'filename' => $uuid,
         ], [
             'original_filename' => $info['name'] ?? ($info['original_filename'] ?? 'unknown'),
             'uploaded_by' => Auth::id(),
@@ -790,7 +808,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
             'alt' => null,
             'public' => config('backstage.media.visibility') === 'public',
             'metadata' => $info,
-            'checksum' => md5($info['uuid'] ?? uniqid()),
+            'checksum' => md5($uuid),
         ]);
 
         return $media;
