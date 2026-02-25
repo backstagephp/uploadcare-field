@@ -4,6 +4,8 @@ namespace Backstage\UploadcareField;
 
 use Backstage\Fields\Contracts\FieldContract;
 use Backstage\Fields\Contracts\HydratesValues;
+use Backstage\Fields\Contracts\HydratesValuesForFilament;
+use Backstage\Fields\Contracts\HydratesValuesForFrontend;
 use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
 use Backstage\Uploadcare\Enums\Style;
@@ -22,7 +24,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 
-class Uploadcare extends Base implements FieldContract, HydratesValues
+class Uploadcare extends Base implements FieldContract, HydratesValues, HydratesValuesForFilament, HydratesValuesForFrontend
 {
     public function getFieldType(): ?string
     {
@@ -988,6 +990,16 @@ class Uploadcare extends Base implements FieldContract, HydratesValues
     }
 
     public ?Field $field_model = null;
+
+    public function hydrateForFrontend(mixed $value, ?Model $model = null): mixed
+    {
+        return $this->hydrate($value, $model);
+    }
+
+    public function hydrateForFilament(mixed $value, ?Model $model = null): mixed
+    {
+        return $this->hydrate($value, $model);
+    }
 
     public function hydrate(mixed $value, ?Model $model = null): mixed
     {
