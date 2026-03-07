@@ -10,7 +10,7 @@ use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
 use Backstage\Uploadcare\Enums\Style;
 use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
-use Backstage\UploadcareField\Forms\Components\MediaGridPicker;
+use Backstage\Media\Forms\Components\MediaGridPicker;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;

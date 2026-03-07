@@ -53,8 +53,5 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
 
             return null;
         });
-
-        // Register Livewire components
-        $this->app->make('livewire')->component('backstage-uploadcare-field::media-grid-picker', \Backstage\UploadcareField\Livewire\MediaGridPicker::class);
     }
 }
