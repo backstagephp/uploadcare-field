@@ -1,5 +1,6 @@
 <?php
 
+use Backstage\Media\Models\Media;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -19,9 +20,9 @@ return new class extends Migration
 
         $firstSiteUlid = DB::table('sites')->orderBy('ulid')->value('ulid');
 
-        $mediaModelClass = config('backstage.media.model', \Backstage\Media\Models\Media::class);
+        $mediaModelClass = config('backstage.media.model', Media::class);
         if (! is_string($mediaModelClass) || ! class_exists($mediaModelClass)) {
-            $mediaModelClass = \Backstage\Media\Models\Media::class;
+            $mediaModelClass = Media::class;
         }
 
         $mediaTable = app($mediaModelClass)->getTable();

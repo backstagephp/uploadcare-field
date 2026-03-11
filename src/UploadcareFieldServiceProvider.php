@@ -2,8 +2,15 @@
 
 namespace Backstage\UploadcareField;
 
+use Backstage\Fields\Fields;
+use Backstage\Media\Events\MediaUploading;
+use Backstage\Media\Models\Media;
+use Backstage\Models\ContentFieldValue;
+use Backstage\UploadcareField\Listeners\CreateMediaFromUploadcare;
+use Backstage\UploadcareField\Observers\ContentFieldValueObserver;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
+use Illuminate\Support\Facades\Event;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -28,14 +35,14 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
             Css::make('uploadcare-field', __DIR__ . '/../resources/dist/uploadcare-field.css'),
         ], 'backstage/uploadcare-field');
 
-        \Illuminate\Support\Facades\Event::listen(
-            \Backstage\Media\Events\MediaUploading::class,
-            \Backstage\UploadcareField\Listeners\CreateMediaFromUploadcare::class,
+        Event::listen(
+            MediaUploading::class,
+            CreateMediaFromUploadcare::class,
         );
 
-        \Backstage\Models\ContentFieldValue::observe(\Backstage\UploadcareField\Observers\ContentFieldValueObserver::class);
+        ContentFieldValue::observe(ContentFieldValueObserver::class);
 
-        \Backstage\Fields\Fields::registerField(\Backstage\UploadcareField\Uploadcare::class);
+        Fields::registerField(Uploadcare::class);
     }
 
     public function bootingPackage(): void
@@ -43,7 +50,7 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'backstage-uploadcare-field');
 
         // Register Media src resolver
-        \Backstage\Media\Models\Media::resolveSrcUsing(function ($media) {
+        Media::resolveSrcUsing(function ($media) {
             if ($media->metadata && isset($media->metadata['cdnUrl'])) {
                 $cdnUrl = $media->metadata['cdnUrl'];
                 if (filter_var($cdnUrl, FILTER_VALIDATE_URL)) {
