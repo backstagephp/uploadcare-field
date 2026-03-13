@@ -8,11 +8,13 @@ use Backstage\Fields\Contracts\HydratesValuesForFilament;
 use Backstage\Fields\Contracts\HydratesValuesForFrontend;
 use Backstage\Fields\Fields\Base;
 use Backstage\Fields\Models\Field;
+use Backstage\Models\ContentFieldValue;
 use Backstage\Uploadcare\Enums\Style;
 use Backstage\Uploadcare\Forms\Components\Uploadcare as Input;
 use Backstage\UploadcareField\Forms\Components\MediaGridPicker;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -22,6 +24,7 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class Uploadcare extends Base implements FieldContract, HydratesValues, HydratesValuesForFilament, HydratesValuesForFrontend
@@ -138,7 +141,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
                                     }
                                 }
 
-                                $fieldValue = \Backstage\Models\ContentFieldValue::where('content_ulid', $record->getKey())
+                                $fieldValue = ContentFieldValue::where('content_ulid', $record->getKey())
                                     ->where(function ($query) use ($fieldUlid) {
                                         $query->where('field_ulid', $fieldUlid)
                                             ->orWhere('ulid', $fieldUlid);
@@ -173,7 +176,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
                                     if ($m->relationLoaded('pivot') && $m->pivot) {
                                         $contextModel->setRelation('pivot', $m->pivot);
                                     } else {
-                                        $dummyPivot = new \Backstage\Models\ContentFieldValue;
+                                        $dummyPivot = new ContentFieldValue;
                                         $dummyPivot->setAttribute('meta', null);
                                         $contextModel->setRelation('pivot', $dummyPivot);
                                     }
@@ -300,7 +303,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
                         ->perPage(12)
                         ->multiple($isMultiple)
                         ->acceptedFileTypes($acceptedFileTypes),
-                    \Filament\Forms\Components\Hidden::make('selected_media_uuid')
+                    Hidden::make('selected_media_uuid')
                         ->default(null)
                         ->dehydrated()
                         ->live(),
@@ -457,15 +460,15 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
         if (self::isMediaUlidArray($values)) {
             $mediaData = null;
 
-            if ($record->exists && class_exists(\Backstage\Models\ContentFieldValue::class)) {
+            if ($record->exists && class_exists(ContentFieldValue::class)) {
                 try {
-                    $cfv = \Backstage\Models\ContentFieldValue::where('content_ulid', $record->ulid)
+                    $cfv = ContentFieldValue::where('content_ulid', $record->ulid)
                         ->where('field_ulid', $field->ulid)
                         ->first();
 
                     if ($cfv) {
                         $models = self::hydrateFromModel($cfv, $values, true);
-                        if ($models && $models instanceof \Illuminate\Support\Collection) {
+                        if ($models && $models instanceof Collection) {
                             $mediaData = $models->map(fn ($m) => self::mapMediaToValue($m))->values()->all();
                         }
                     }
