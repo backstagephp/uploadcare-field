@@ -1,0 +1,19 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev:styles": "npx @tailwindcss/cli --input resources/css/index.css --output resources/dist/uploadcare-field.css --watch",
+        "build:styles": "npx @tailwindcss/cli --input resources/css/index.css --output resources/dist/uploadcare-field.css --minify",
+        "dev": "npm run dev:styles",
+        "build": "npm run build:styles"
+    },
+    "devDependencies": {
+        "@awcodes/filament-plugin-purge": "^1.1.1",
+        "@tailwindcss/cli": "^4.1.11",
+        "@tailwindcss/forms": "^0.5.4",
+        "@tailwindcss/typography": "^0.5.9",
+        "prettier": "^3.0.0",
+        "prettier-plugin-tailwindcss": "^0.6.13",
+        "tailwindcss": "^4.1.11"
+    }
+}
