@@ -7,7 +7,6 @@ use Backstage\Media\Events\MediaUploading;
 use Backstage\Media\Models\Media;
 use Backstage\Models\ContentFieldValue;
 use Backstage\UploadcareField\Listeners\CreateMediaFromUploadcare;
-use Backstage\UploadcareField\Livewire\MediaGridPicker;
 use Backstage\UploadcareField\Observers\ContentFieldValueObserver;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
@@ -61,8 +60,5 @@ class UploadcareFieldServiceProvider extends PackageServiceProvider
 
             return null;
         });
-
-        // Register Livewire components
-        $this->app->make('livewire')->component('backstage-uploadcare-field::media-grid-picker', MediaGridPicker::class);
     }
 }
