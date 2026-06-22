@@ -60,6 +60,57 @@ return [
 ];
 ```
 
+### CSS and Styling
+
+This package includes a MediaGridPicker component that requires Tailwind CSS classes to be properly compiled. The package automatically registers its CSS assets with Filament, but you may need to ensure your main application's Tailwind build includes the package's source files.
+
+If you're using Tailwind CSS v4 in your main application, add the package's source directories to your `resources/css/sources.css` file:
+
+```css
+@source "/path/to/backstage-uploadcare-field/resources/";
+@source "/path/to/backstage-uploadcare-field/src/";
+```
+
+For Tailwind CSS v3, add the package paths to your `tailwind.config.js`:
+
+```javascript
+module.exports = {
+  content: [
+    // ... your existing paths
+    './vendor/backstage/uploadcare-field/resources/**/*.blade.php',
+    './vendor/backstage/uploadcare-field/src/**/*.php',
+  ],
+  // ... rest of your config
+}
+```
+
+The package's CSS is automatically loaded in Filament admin panels and includes all necessary styles for the MediaGridPicker component.
+
+### MediaGridPicker Integration
+
+The package includes a MediaGridPicker component that allows users to select existing media files from the media library and add them directly to Uploadcare fields. This feature is automatically available when using uploadcare fields in Filament forms.
+
+**How it works:**
+1. When editing content with uploadcare fields, a "Select from Media" button appears next to the field
+2. Clicking this button opens a modal with a grid of existing media files
+3. Selecting a media file automatically adds it to the Uploadcare field
+4. The integration uses Alpine.js events and JavaScript to communicate between the MediaGridPicker and Uploadcare components
+
+**Technical details:**
+- The MediaGridPicker dispatches an `add-uploadcare-file` event when a file is selected
+- The package's JavaScript listens for this event and attempts to add the file to the Uploadcare field
+- Multiple fallback methods are used to ensure compatibility with different Uploadcare configurations:
+  1. **Direct Uploadcare API**: Tries to use the Uploadcare widget's API to add files
+  2. **Livewire State Management**: Updates the Livewire component state directly
+  3. **Hidden Input Fields**: Sets values on hidden input fields and triggers events
+  4. **File Object Creation**: Attempts to create File objects from CDN URLs
+  5. **Generic Input Fields**: Falls back to setting values on any matching input fields
+
+**Debugging:**
+- The JavaScript includes comprehensive console logging to help debug integration issues
+- Check the browser console for detailed information about which methods are being attempted
+- The system will log which Uploadcare elements are found and which methods succeed or fail
+
 ## Automatic Migration
 
 This package includes an automatic migration that fixes double-encoded JSON data in Uploadcare fields. This migration runs automatically when the package is installed or updated.

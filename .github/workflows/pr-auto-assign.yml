@@ -17,19 +17,20 @@ jobs:
 
       - name: Determine label based on branch prefix or author
         id: label
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          # Check if it's a Dependabot PR (using the PR author, not the workflow actor)
-          if [[ "${{ github.event.pull_request.user.login }}" == "dependabot[bot]" ]]; then
-            echo "label=dependencies" >> $GITHUB_OUTPUT
-          # Check branch prefixes
-          elif [[ "${{ github.head_ref }}" == feature/* ]] || [[ "${{ github.head_ref }}" == feat/* ]]; then
-            echo "label=enhancement" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.head_ref }}" == fix/* ]]; then
-            echo "label=fix" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.head_ref }}" == docs/* ]]; then
-            echo "label=documentation" >> $GITHUB_OUTPUT
+          if [[ "$PR_AUTHOR" == "dependabot[bot]" ]]; then
+            echo "label=dependencies" >> "$GITHUB_OUTPUT"
+          elif [[ "$HEAD_REF" == feature/* ]] || [[ "$HEAD_REF" == feat/* ]]; then
+            echo "label=enhancement" >> "$GITHUB_OUTPUT"
+          elif [[ "$HEAD_REF" == fix/* ]]; then
+            echo "label=fix" >> "$GITHUB_OUTPUT"
+          elif [[ "$HEAD_REF" == docs/* ]]; then
+            echo "label=documentation" >> "$GITHUB_OUTPUT"
           else
-            echo "label=" >> $GITHUB_OUTPUT
+            echo "label=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Add label to PR
