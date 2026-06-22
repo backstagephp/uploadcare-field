@@ -138,7 +138,7 @@ class CreateMediaFromUploadcare
         }
 
         $tenantRelationship = config('backstage.media.tenant_relationship', 'site');
-        $tenantField = $tenantRelationship . '_ulid';
+        $tenantField = $tenantRelationship.'_ulid';
         $tenantUlid = $tenant->ulid ?? (method_exists($tenant, 'getKey') ? $tenant->getKey() : ($tenant->id ?? null));
 
         if ($tenantUlid) {
@@ -160,7 +160,7 @@ class CreateMediaFromUploadcare
         }
 
         $tenantRelationship = config('backstage.media.tenant_relationship', 'site');
-        $tenantField = $tenantRelationship . '_ulid';
+        $tenantField = $tenantRelationship.'_ulid';
         $tenantUlid = $tenant->ulid ?? (method_exists($tenant, 'getKey') ? $tenant->getKey() : ($tenant->id ?? null));
 
         if ($tenantUlid) {

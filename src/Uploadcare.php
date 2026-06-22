@@ -227,7 +227,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
                                 if ($uuid || $cdnUrl) {
                                     $fileData = [
                                         'uuid' => $uuid ?? self::extractUuidFromString($cdnUrl ?? ''),
-                                        'cdnUrl' => $cdnUrl ?? ($uuid ? 'https://ucarecdn.com/' . $uuid . '/' : null),
+                                        'cdnUrl' => $cdnUrl ?? ($uuid ? 'https://ucarecdn.com/'.$uuid.'/' : null),
                                         'original_filename' => $filename,
                                         'name' => $filename,
                                     ];
@@ -604,7 +604,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
 
                 // Fallback for older records: construct a default Uploadcare URL if we only have a UUID.
                 if (! $cdnUrl && $uuid) {
-                    $cdnUrl = 'https://ucarecdn.com/' . $uuid . '/';
+                    $cdnUrl = 'https://ucarecdn.com/'.$uuid.'/';
                 }
 
                 if (! $cdnUrl || ! filter_var($cdnUrl, FILTER_VALIDATE_URL)) {
@@ -905,7 +905,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
             $fileUuid = $metadata['uuid'] ?? ($metadata['fileInfo']['uuid'] ?? null) ?? self::extractUuidFromString((string) ($media->filename ?? ''));
 
             if (! $cdnUrl && $fileUuid) {
-                $cdnUrl = 'https://ucarecdn.com/' . $fileUuid . '/';
+                $cdnUrl = 'https://ucarecdn.com/'.$fileUuid.'/';
             }
 
             return is_string($cdnUrl) && filter_var($cdnUrl, FILTER_VALIDATE_URL) ? $cdnUrl : null;
@@ -918,14 +918,14 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
         $mediaModel = self::getMediaModel();
 
         $media = $mediaModel::where('filename', $uuid)
-            ->orWhere('metadata->cdnUrl', 'like', '%' . $uuid . '%')
+            ->orWhere('metadata->cdnUrl', 'like', '%'.$uuid.'%')
             ->first();
 
         if ($media && isset($media->metadata['cdnUrl'])) {
             return $media->metadata['cdnUrl'];
         }
 
-        return 'https://ucarecdn.com/' . $uuid . '/';
+        return 'https://ucarecdn.com/'.$uuid.'/';
     }
 
     private static function isValidCdnUrl(string $url): bool
@@ -1131,7 +1131,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
         return $value;
     }
 
-    public static function mapMediaToValue(mixed $media): array | string
+    public static function mapMediaToValue(mixed $media): array|string
     {
         if (! $media instanceof Model && ! is_array($media)) {
             return is_string($media) ? $media : [];
@@ -1190,7 +1190,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
                 }
 
                 // Ensure cdnUrl includes modifiers
-                $data['cdnUrl'] = rtrim($data['cdnUrl'], '/') . '/' . $modifiers;
+                $data['cdnUrl'] = rtrim($data['cdnUrl'], '/').'/'.$modifiers;
                 if (! str_ends_with($data['cdnUrl'], '/')) {
                     $data['cdnUrl'] .= '/';
                 }
@@ -1218,7 +1218,7 @@ class Uploadcare extends Base implements FieldContract, HydratesValues, Hydrates
 
         if (! empty($ulids)) {
             $mediaQuery->whereIn('media_ulid', $ulids)
-                ->orderByRaw('FIELD(media_ulid, ' . implode(',', array_fill(0, count($ulids), '?')) . ')', $ulids);
+                ->orderByRaw('FIELD(media_ulid, '.implode(',', array_fill(0, count($ulids), '?')).')', $ulids);
         }
 
         $media = $mediaQuery->get()->unique('ulid');
